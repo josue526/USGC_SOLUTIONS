@@ -8,15 +8,6 @@ import { CheckCircle, User, Lock, ArrowLeft, AlertCircle, ScanFace, CreditCard, 
 // Use lh3.googleusercontent.com format for better embedding reliability
 const LOGO_URL = "https://lh3.googleusercontent.com/d/1MVJkilhkDs4l5oWQmbVgqOeXdUfYA7vp";
 
-const AVAILABLE_STATES = ['CA', 'TX', 'NY', 'FL', 'AZ'];
-const CITIES_BY_STATE: Record<string, string[]> = {
-  CA: ['Los Angeles', 'San Diego', 'San Francisco', 'Sacramento'],
-  TX: ['Austin', 'Houston', 'Dallas', 'San Antonio', 'Fort Worth'],
-  NY: ['New York', 'Buffalo', 'Albany'],
-  FL: ['Miami', 'Orlando', 'Tampa'],
-  AZ: ['Phoenix', 'Tucson', 'Scottsdale']
-};
-
 const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string) => void, onCancel: () => void, label: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -101,19 +92,12 @@ const ResidentPortal = () => {
   const [newAllowedName, setNewAllowedName] = useState('');
 
   // Dropdown States
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
   const [availableProperties, setAvailableProperties] = useState<PropertyRequest[]>([]);
 
   useEffect(() => {
-    // Update available properties when filters change
-    const allApproved = db.getApprovedProperties();
-    const filtered = allApproved.filter(p => 
-      (!selectedState || p.state === selectedState) &&
-      (!selectedCity || p.city === selectedCity)
-    );
-    setAvailableProperties(filtered);
-  }, [selectedState, selectedCity]);
+    // Load all approved properties directly
+    setAvailableProperties(db.getApprovedProperties());
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -122,8 +106,6 @@ const ResidentPortal = () => {
       credentials: { username: '', password: '' }
     });
     setPhotos({ dl: null, site: null });
-    setSelectedState('');
-    setSelectedCity('');
     setError('');
   };
 
@@ -268,30 +250,16 @@ const ResidentPortal = () => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <select className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none" value={selectedState} onChange={e => {setSelectedState(e.target.value); setSelectedCity(''); setFormData({...formData, complex: ''})}}>
-                      <option value="">Filter State</option>
-                      {AVAILABLE_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <select className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none" value={selectedCity} onChange={e => {setSelectedCity(e.target.value); setFormData({...formData, complex: ''})}} disabled={!selectedState}>
-                      <option value="">Filter City</option>
-                      {selectedState && CITIES_BY_STATE[selectedState]?.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <select 
-                    className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none" 
-                    value={formData.complex} 
-                    onChange={e => setFormData({...formData, complex: e.target.value})} 
-                    disabled={availableProperties.length === 0}
-                  >
-                    <option value="">SELECT PROPERTY</option>
-                    {availableProperties.map(p => <option key={p.id} value={p.propertyName}>{p.propertyName}</option>)}
-                  </select>
-                  <p className="text-[9px] font-bold text-gray-400 uppercase ml-2">Properties {selectedState ? 'Filtered' : 'Listed'}: {availableProperties.length}</p>
-                </div>
+                <select 
+                  className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none" 
+                  value={formData.complex} 
+                  onChange={e => setFormData({...formData, complex: e.target.value})} 
+                >
+                  <option value="">SELECT PROPERTY</option>
+                  {availableProperties.map(p => <option key={p.id} value={p.propertyName}>{p.propertyName}</option>)}
+                </select>
                 
-                <input type="text" placeholder="UNIT NUMBER" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500 h-[60px]" value={formData.unitNumber} onChange={e => setFormData({...formData, unitNumber: e.target.value})} />
+                <input type="text" placeholder="UNIT NUMBER" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={formData.unitNumber} onChange={e => setFormData({...formData, unitNumber: e.target.value})} />
               </div>
 
               <div className="grid grid-cols-2 gap-8 mt-4">
