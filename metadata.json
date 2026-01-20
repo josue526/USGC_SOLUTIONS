@@ -1,0 +1,7 @@
+{
+  "name": "US GUARD CO Solutions",
+  "description": "U.S Guard Co. Solutions - A comprehensive custom Residential Management Security system",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
