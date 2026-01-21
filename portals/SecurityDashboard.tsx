@@ -1,11 +1,15 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../services/mockDb';
-import { VisitorProfile, ResidentProfile, SecurityOfficerRequest, MaintenanceType, AlertNote, PropertyRequest, VisitorOverstayAlert } from '../types';
-import { ShieldCheck, UserCog, AlertCircle, Home, Camera, CheckCircle2, ShieldAlert, Building, Wrench, MessageSquare, FileText, Upload, ChevronRight, Check, Edit3, Save, X, Eye, FileBadge, PlusCircle, ArrowLeft, BadgeCheck, XCircle, ScanFace, CreditCard, RefreshCw, Search, Clock, Users, Activity, Bell, MapPin, UserCheck, LogOut, CheckCircle, Siren, Lock, Unlock, KeyRound, AlertTriangle, Timer } from 'lucide-react';
+import { VisitorProfile, ResidentProfile, SecurityOfficerRequest, MaintenanceType, AlertNote, PropertyRequest, VisitorOverstayAlert, MaintenanceRequest } from '../types';
+import { ShieldCheck, UserCog, AlertCircle, Home, Camera, CheckCircle2, ShieldAlert, Building, Wrench, MessageSquare, FileText, Upload, ChevronRight, Check, Edit3, Save, X, Eye, FileBadge, PlusCircle, ArrowLeft, BadgeCheck, XCircle, ScanFace, CreditCard, RefreshCw, Search, Clock, Users, Activity, Bell, MapPin, UserCheck, LogOut, CheckCircle, Siren, Lock, Unlock, KeyRound, AlertTriangle, Timer, QrCode, ClipboardCheck, Briefcase, LayoutDashboard, Database, Power, Globe, Trash2, Filter } from 'lucide-react';
 import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
+import jsQR from 'jsqr';
 
 const LOGO_URL = "https://lh3.googleusercontent.com/d/1MVJkilhkDs4l5oWQmbVgqOeXdUfYA7vp";
+
+// --- Components ---
 
 const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string) => void, onCancel: () => void, label: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -43,8 +47,8 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
   };
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl relative">
+    <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl relative border-4 border-gray-800">
         <div className="bg-brand-900 p-6 text-white text-center">
           <h3 className="font-black uppercase tracking-widest text-sm">{label}</h3>
         </div>
@@ -60,10 +64,10 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
 
         <div className="p-8 flex justify-between items-center bg-gray-50">
           <button onClick={onCancel} className="text-[10px] font-black uppercase text-gray-500 hover:text-red-500 transition-colors">Cancel</button>
-          <button onClick={capture} className="bg-brand-900 text-white p-6 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all">
+          <button onClick={capture} className="bg-brand-900 text-white p-6 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border-2 border-brand-700">
             <Camera className="w-8 h-8" />
           </button>
-          <div className="w-12" /> {/* Spacer */}
+          <div className="w-12" />
         </div>
       </div>
       <p className="mt-6 text-white/50 text-[10px] font-bold uppercase tracking-[0.3em]">Center {label} in frame</p>
@@ -71,1107 +75,683 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
   );
 };
 
+const QRScanner = ({ onScan, onCancel }: { onScan: (data: string) => void, onCancel: () => void }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [stream, setStream] = useState<MediaStream | null>(null);
+
+    useEffect(() => {
+        let animationFrameId: number;
+        
+        async function startCamera() {
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                setStream(s);
+                if (videoRef.current) {
+                    videoRef.current.srcObject = s;
+                    videoRef.current.play();
+                    scan();
+                }
+            } catch (err) {
+                console.error("Camera error:", err);
+            }
+        }
+
+        const scan = () => {
+            if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
+                const video = videoRef.current;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                
+                if (ctx) {
+                    canvas.height = video.videoHeight;
+                    canvas.width = video.videoWidth;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    if (code) {
+                        onScan(code.data);
+                        return;
+                    }
+                }
+            }
+            animationFrameId = requestAnimationFrame(scan);
+        };
+
+        startCamera();
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        };
+    }, []);
+
+    return (
+        <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4">
+             <div className="relative w-full max-w-sm aspect-square bg-black border-4 border-brand-500/30 rounded-3xl overflow-hidden shadow-2xl">
+                 <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
+                 <canvas ref={canvasRef} className="hidden" />
+                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                     <div className="w-48 h-48 border-2 border-brand-400/80 rounded-2xl relative">
+                         <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-scan-line"></div>
+                     </div>
+                 </div>
+             </div>
+             <p className="text-white text-xs font-black uppercase tracking-widest mt-8 animate-pulse">Scanning for Resident Code...</p>
+             <button onClick={onCancel} className="mt-8 bg-white/10 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] hover:bg-white/20 transition-colors">Cancel Scan</button>
+             <style>{`
+               @keyframes scan-line { 0% { top: 10%; opacity: 0; } 50% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
+               .animate-scan-line { animation: scan-line 2s linear infinite; }
+             `}</style>
+        </div>
+    );
+};
+
 const SecurityDashboard = () => {
-  const [mode, setMode] = useState<'LOGIN' | 'REQUEST' | 'PROPERTY_SELECT' | 'DASHBOARD' | 'SUCCESS'>('LOGIN');
+  const [mode, setMode] = useState<'LOGIN' | 'REQUEST' | 'PROPERTY_SELECT' | 'DASHBOARD' | 'ADMIN_DASHBOARD' | 'SUCCESS'>('LOGIN');
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SUMMARY' | 'MONITOR' | 'CHECKIN' | 'RESIDENT_CHECKIN' | 'MAINTENANCE' | 'INTERACTION' | 'ADMIN' | 'OVERWATCH'>('DASHBOARD');
   
+  // Admin State
+  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'OFFICERS' | 'PROPERTIES' | 'MAINTENANCE' | 'ALERTS' | 'ACCOUNTS'>('OVERVIEW');
+  const [pendingMaintenance, setPendingMaintenance] = useState<MaintenanceRequest[]>([]);
+  const [pendingAlerts, setPendingAlerts] = useState<AlertNote[]>([]);
+  const [allAccounts, setAllAccounts] = useState<any[]>([]);
+  const [globalStats, setGlobalStats] = useState<any[]>([]);
+
+  // Auth State
   const [onDutyProperty, setOnDutyProperty] = useState<string>('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [adminRole, setAdminRole] = useState<'NONE' | 'SUPER_ADMIN'>('NONE');
-  const [isSuperAdminLogin, setIsSuperAdminLogin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [creds, setCreds] = useState({ username: '', password: '' });
-  const [adminPin, setAdminPin] = useState('');
+  const [officerForm, setOfficerForm] = useState({ firstName: '', lastName: '', badgeNumber: '', credentials: { username: '', password: '' } });
   const [error, setError] = useState('');
 
-  // Resident Check-in workflow
+  // Officer Workflows
   const [resSearchQuery, setResSearchQuery] = useState('');
   const [foundResident, setFoundResident] = useState<ResidentProfile | null>(null);
-  const [resCheckInResult, setResCheckInResult] = useState<'NONE' | 'GRANTED' | 'DENIED'>('NONE');
+  const [resCheckInResult, setResCheckInResult] = useState<'GRANTED' | 'DENIED' | null>(null);
+  const [visitorForm, setVisitorForm] = useState({ firstName: '', lastName: '', residentUnit: '', complex: '', relationship: '', duration: 4 });
+  const [visitorPhoto, setVisitorPhoto] = useState<string | null>(null);
+  const [idPhoto, setIdPhoto] = useState<string | null>(null);
 
-  // Monitor Logic
-  const [activeVisitors, setActiveVisitors] = useState<VisitorProfile[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [consecutiveAlerts, setConsecutiveAlerts] = useState<VisitorOverstayAlert[]>([]);
+  // Camera/QR
+  const [cameraTarget, setCameraTarget] = useState<'NONE' | 'VISITOR' | 'ID'>('NONE');
+  const [showQrScanner, setShowQrScanner] = useState(false);
 
-  // Forms
-  const [visForm, setVisForm] = useState({ complex: '', residentUnit: '', residentId: '', firstName: '', lastName: '', relationship: '', expectedDurationHours: 4 });
-  const [visFacePhoto, setVisFacePhoto] = useState<string | null>(null);
-  const [visIdPhoto, setVisIdPhoto] = useState<string | null>(null);
-  const [cameraMode, setCameraMode] = useState<'NONE' | 'FACE' | 'ID'>('NONE');
-  const [visSuccess, setVisSuccess] = useState<VisitorProfile | null>(null);
-
-  // Visitor Check-in Search States
+  // Data
   const [availableProperties, setAvailableProperties] = useState<PropertyRequest[]>([]);
-  const [residentSearchQuery, setResidentSearchQuery] = useState('');
-  const [filteredUnits, setFilteredUnits] = useState<{unit: string, name: string, id: string}[]>([]);
-
-  const [maintForm, setMaintForm] = useState<{ type: MaintenanceType, details: string, property: string }>({ type: 'Lights Out', details: '', property: '' });
-  const [maintSuccess, setMaintSuccess] = useState(false);
-
-  const [interactionForm, setInteractionForm] = useState({
-    residentUnit: '', residentId: '', residentName: '', details: '', thermsStatus: 'NO' as AlertNote['thermsStatus'], thermsReportNumber: '', attachment: null as string | null
-  });
-  const [interactionSuccess, setInteractionSuccess] = useState(false);
-
-  // Registration Form
-  const [regForm, setRegForm] = useState({ firstName: '', lastName: '', badgeNumber: '', username: '', password: '' });
-
-  // Super Admin Review Data
-  const [pendingProperties, setPendingProperties] = useState<PropertyRequest[]>([]);
+  const [activeVisitors, setActiveVisitors] = useState<VisitorProfile[]>([]);
+  const [overstayAlerts, setOverstayAlerts] = useState<VisitorOverstayAlert[]>([]);
   const [pendingOfficers, setPendingOfficers] = useState<SecurityOfficerRequest[]>([]);
-
-  // Credential Vault
-  const [userCredentials, setUserCredentials] = useState<any[]>([]);
-  const [areCredentialsRevealed, setAreCredentialsRevealed] = useState(false);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [unlockCreds, setUnlockCreds] = useState({ username: '', password: '' });
-
-  const refreshData = useCallback(() => {
-    setPendingProperties(db.getPropertyRequests().filter(p => p.status === 'PENDING'));
-    setPendingOfficers(db.getOfficerRequests().filter(o => o.status === 'PENDING'));
-    setUserCredentials(db.getAllUserCredentials());
-    
-    const props = db.getApprovedProperties();
-    setAvailableProperties(props);
-
-    // Filter by onDutyProperty if set
-    let visitors = db.getAllActiveVisitors();
-    if (onDutyProperty) {
-      visitors = visitors.filter(v => v.complex === onDutyProperty);
-    }
-    setActiveVisitors(visitors);
-
-    const alerts = db.getConsecutiveVisitAlerts().filter(a => onDutyProperty ? a.propertyName === onDutyProperty : true);
-    setConsecutiveAlerts(alerts);
-
-    const allVisitors = db.getAllVisitors().map(v => ({ type: 'VISITOR' as const, data: v, time: v.checkInTime }));
-    const allMaint = db.getMaintenanceRequests().map(m => ({ type: 'MAINTENANCE' as const, data: m, time: m.reportedAt }));
-    const allNotes = db.getAlertNotes().map(n => ({ type: 'ALERT' as const, data: n, time: n.timestamp }));
-    
-    let feed = [...allVisitors, ...allMaint, ...allNotes];
-
-    if (onDutyProperty && onDutyProperty !== 'HEADQUARTERS') {
-      feed = feed.filter(item => {
-        if (item.type === 'VISITOR') return item.data.complex === onDutyProperty;
-        if (item.type === 'MAINTENANCE') return item.data.propertyName === onDutyProperty;
-        if (item.type === 'ALERT') return item.data.propertyName === onDutyProperty;
-        return true;
-      });
-    }
-
-    setRecentActivity(feed.sort((a, b) => b.time - a.time).slice(0, 20));
-  }, [onDutyProperty]);
-
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => { refreshData(); }, [refreshData, activeTab]);
+  const [pendingProperties, setPendingProperties] = useState<PropertyRequest[]>([]);
 
   useEffect(() => {
-    if (visForm.complex || onDutyProperty) {
-      const complex = onDutyProperty || visForm.complex;
-      const residents = db.getApprovedResidents().filter(r => r.complex === complex);
-      const query = residentSearchQuery.toLowerCase();
-      const filtered = residents
-        .filter(r => !query || (r.firstName + ' ' + r.lastName).toLowerCase().includes(query) || r.unitNumber.toLowerCase().includes(query))
-        .map(r => ({ unit: r.unitNumber, name: `${r.firstName} ${r.lastName}`, id: r.id }))
-        .sort((a, b) => a.unit.localeCompare(b.unit, undefined, {numeric: true}));
-      
-      setFilteredUnits(filtered);
-    } else {
-      setFilteredUnits([]);
-    }
-  }, [visForm.complex, onDutyProperty, residentSearchQuery]);
+    setAvailableProperties(db.getApprovedProperties());
+    if (isSuperAdmin) refreshAdminData();
+  }, [isSuperAdmin, mode, adminTab]);
+
+  useEffect(() => {
+    if (isLoggedIn && onDutyProperty) refreshData();
+  }, [isLoggedIn, onDutyProperty, activeTab]);
+
+  const refreshData = () => {
+      const visitors = db.getAllActiveVisitors().filter(v => v.complex === onDutyProperty);
+      setActiveVisitors(visitors);
+      setOverstayAlerts(db.getConsecutiveVisitAlerts().filter(a => a.propertyName === onDutyProperty));
+  };
+
+  const refreshAdminData = () => {
+      setPendingOfficers(db.getOfficerRequests().filter(o => o.status === 'PENDING'));
+      setPendingProperties(db.getPropertyRequests().filter(p => p.status === 'PENDING'));
+      setPendingMaintenance(db.getMaintenanceRequests().filter(m => m.status === 'PENDING_REVIEW'));
+      setPendingAlerts(db.getAlertNotes().filter(a => a.status === 'UNDER_REVIEW'));
+      setAllAccounts(db.getAllUserCredentials());
+
+      const visitors = db.getAllActiveVisitors();
+      const props = db.getApprovedProperties();
+      const stats = props.map(p => ({
+          name: p.propertyName,
+          activeVisitors: visitors.filter(v => v.complex === p.propertyName).length,
+          alerts: db.getAlertNotes().filter(n => n.propertyName === p.propertyName && n.status === 'UNDER_REVIEW').length,
+          maintenance: db.getMaintenanceRequests().filter(m => m.propertyName === p.propertyName && m.status === 'PENDING_REVIEW').length
+      }));
+      setGlobalStats(stats);
+  };
 
   const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (isSuperAdminLogin) {
-      if (creds.username === 'josue@usguardco' && creds.password === 'pass') {
-        setIsLoggedIn(true); 
-        setAdminRole('SUPER_ADMIN'); 
-        setMode('PROPERTY_SELECT'); 
-      } else setError('Super Admin Auth Failed');
-    } else {
-      if (db.authenticateOfficer(creds)) { 
-        setIsLoggedIn(true); 
-        setMode('PROPERTY_SELECT'); 
-      }
-      else setError('Officer Auth Failed: Invalid credentials or account not approved.');
-    }
-  };
-
-  const selectDutyProperty = (propName: string) => {
-    setOnDutyProperty(propName);
-    setVisForm(prev => ({ ...prev, complex: propName }));
-    setMode('DASHBOARD');
-    setActiveTab('DASHBOARD');
-  };
-
-  const handleLogoff = () => {
-    setCreds({ username: '', password: '' });
-    setIsSuperAdminLogin(false);
-    setIsLoggedIn(false);
-    setAdminRole('NONE');
-    setMode('LOGIN');
-    setOnDutyProperty('');
-    setAreCredentialsRevealed(false);
-  };
-
-  const handleRegistration = (e: React.FormEvent) => {
-    e.preventDefault();
-    db.createOfficerRequest({
-        firstName: regForm.firstName,
-        lastName: regForm.lastName,
-        badgeNumber: regForm.badgeNumber,
-        credentials: { username: regForm.username, password: regForm.password }
-    });
-    setMode('SUCCESS');
-  };
-
-  const handleMaintenanceSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!maintForm.details || !onDutyProperty) return;
-    
-    db.createMaintenanceRequest({
-      type: maintForm.type,
-      details: maintForm.details,
-      propertyName: onDutyProperty,
-      reportedBy: 'Officer Terminal'
-    });
-    
-    setMaintSuccess(true);
-    setMaintForm({ type: 'Lights Out', details: '', property: '' });
-    setTimeout(() => {
-        setMaintSuccess(false);
-        setActiveTab('DASHBOARD');
-    }, 2000);
-  };
-
-  const handleInteractionSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Prioritize ID lookup if available
-    const residents = db.getApprovedResidents();
-    let resident: ResidentProfile | undefined;
-    
-    if (interactionForm.residentId) {
-        resident = residents.find(r => r.id === interactionForm.residentId);
-    }
-
-    if (!resident && interactionForm.residentUnit) {
-        // Fallback for safety, though UI enforces selection
-        resident = residents.find(r => r.complex === onDutyProperty && r.unitNumber === interactionForm.residentUnit);
-    }
-    
-    if (resident) {
-        db.createAlertNote({
-            residentId: resident.id,
-            residentName: `${resident.firstName} ${resident.lastName}`,
-            unitNumber: resident.unitNumber,
-            propertyName: onDutyProperty,
-            officerName: 'Officer Terminal',
-            details: interactionForm.details,
-            thermsStatus: interactionForm.thermsStatus,
-            thermsReportNumber: interactionForm.thermsReportNumber,
-            attachmentUrl: interactionForm.attachment || undefined
-        });
-        setInteractionSuccess(true);
-        setInteractionForm({ residentUnit: '', residentId: '', residentName: '', details: '', thermsStatus: 'NO', thermsReportNumber: '', attachment: null });
-        setTimeout(() => {
-            setInteractionSuccess(false);
-            setActiveTab('DASHBOARD');
-        }, 2000);
-    } else {
-        setError('Resident Not Found. Please select from the list.');
-    }
-  };
-
-  // RESIDENT CHECK-IN LOGIC
-  const searchResident = (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = db.lookupResidentByIdOrDob(resSearchQuery, onDutyProperty);
-    if (res) {
-      setFoundResident(res);
-      setError('');
-    } else {
-      setError('RESIDENT NOT FOUND: Identity does not match any active profiles for this location.');
-    }
-  };
-
-  const finalizeResidentCheckIn = (status: 'GRANTED' | 'DENIED') => {
-    if (foundResident) {
-      db.logResidentCheckIn({
-        residentId: foundResident.id,
-        residentName: `${foundResident.firstName} ${foundResident.lastName}`,
-        propertyName: onDutyProperty,
-        officerName: 'On-Duty Officer',
-        status,
-        searchQuery: resSearchQuery
-      });
-      setResCheckInResult(status);
-      setTimeout(() => {
-        setFoundResident(null);
-        setResSearchQuery('');
-        setResCheckInResult('NONE');
-        setActiveTab('DASHBOARD');
-      }, 2000);
-    }
-  };
-
-  const handleVisitorCheckIn = (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const v = db.checkInVisitor({ 
-        ...visForm, 
-        complex: onDutyProperty, 
-        // Pass residentId to ensure unique identification
-        residentId: visForm.residentId || 'lookup',
-        visitorImageUrl: visFacePhoto || '', 
-        visitorIdImageUrl: visIdPhoto || '' 
-      });
-      setVisSuccess(v);
-      setVisFacePhoto(null);
-      setVisIdPhoto(null);
-      setVisForm(prev => ({ ...prev, residentUnit: '', residentId: '', firstName: '', lastName: '', relationship: '', expectedDurationHours: 4 }));
-      setResidentSearchQuery('');
-      setError('');
-    } catch (err: any) { setError(err.message); }
-  };
-
-  const handleAdminAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (adminPin === '00000') {
-      setAdminRole('SUPER_ADMIN');
-      setAdminPin('');
-      setError('');
-    } else setError('Invalid Authorization PIN.');
-  };
-
-  const handleUnlockCredentials = (e: React.FormEvent) => {
       e.preventDefault();
-      if (unlockCreds.username === 'josue@usguardco' && unlockCreds.password === 'pass') {
-          setAreCredentialsRevealed(true);
-          setShowUnlockModal(false);
-          setUnlockCreds({username: '', password: ''});
+      const username = creds.username.trim();
+      const password = creds.password.trim();
+      
+      if (username.toLowerCase() === 'josue@usguardco' && password === 'solutions') {
+          setIsSuperAdmin(true);
+          setMode('ADMIN_DASHBOARD');
+          setError('');
+          return;
+      }
+
+      const officer = db.authenticateOfficer({ username, password });
+      if (officer) {
+          setIsLoggedIn(true);
+          if (officer.onDutyProperty) {
+              setOnDutyProperty(officer.onDutyProperty);
+              setMode('DASHBOARD');
+          } else {
+              setMode('PROPERTY_SELECT');
+          }
+          setError('');
       } else {
-          alert('Invalid Super Admin Credentials');
+          setError('Invalid Credentials');
       }
   };
 
-  const getRemainingTime = (expiration: number) => {
-    const diff = differenceInMinutes(expiration, now);
-    if (diff <= 0) return "EXPIRED";
-    const hours = Math.floor(diff / 60);
-    const minutes = diff % 60;
-    return `${hours}h ${minutes}m`;
+  const handleOfficerRegister = (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+          db.createOfficerRequest(officerForm);
+          setMode('SUCCESS');
+      } catch (err: any) { setError(err.message); }
   };
+
+  const checkInVisitor = (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+          db.checkInVisitor({
+              ...visitorForm,
+              complex: onDutyProperty,
+              visitorImageUrl: visitorPhoto || undefined,
+              visitorIdImageUrl: idPhoto || undefined,
+              residentId: 'lookup'
+          } as any);
+          setVisitorForm({ firstName: '', lastName: '', residentUnit: '', complex: '', relationship: '', duration: 4 });
+          setVisitorPhoto(null);
+          setIdPhoto(null);
+          setActiveTab('MONITOR');
+          refreshData();
+          alert('Visitor Checked In Successfully');
+      } catch (err: any) { setError(err.message); }
+  };
+
+  const handleResidentScan = (data: string) => {
+      try {
+          const parsed = JSON.parse(data);
+          if (parsed.id) {
+             const resident = db.lookupResidentByIdOrDob(parsed.id, onDutyProperty);
+             if (resident) {
+                 setFoundResident(resident);
+                 setResCheckInResult('GRANTED');
+                 db.logResidentCheckIn({
+                     residentId: resident.id,
+                     residentName: `${resident.firstName} ${resident.lastName}`,
+                     propertyName: onDutyProperty,
+                     officerName: creds.username,
+                     status: 'GRANTED',
+                     searchQuery: 'QR_SCAN'
+                 });
+             } else { setResCheckInResult('DENIED'); }
+          }
+      } catch (e) { setError('Invalid QR Data'); }
+      setShowQrScanner(false);
+  };
+
+  const resetAccount = (id: string) => {
+      alert(`Password reset requested for User ID: ${id}. A system email has been dispatched.`);
+  };
+
+  const handlePropertySelect = (propertyName: string) => {
+      setOnDutyProperty(propertyName);
+      setMode('DASHBOARD');
+  };
+
+  // --- VIEWS ---
 
   if (mode === 'LOGIN') {
-    return (
-      <div className="max-w-md mx-auto py-24 px-4">
-        <div className={`bg-white p-12 rounded-[3rem] shadow-2xl border-t-8 transition-all duration-500 ${isSuperAdminLogin ? 'border-red-600' : 'border-brand-900'}`}>
-          <div className="text-center mb-10">
-            <img src={LOGO_URL} alt="Logo" className="w-32 mx-auto mb-6" referrerPolicy="no-referrer" />
-            <h2 className="text-3xl font-black uppercase tracking-tighter">{isSuperAdminLogin ? 'Super Admin' : 'Officer Login'}</h2>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">Authorized Access Point</p>
-          </div>
-          {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
-          <form onSubmit={handleLogin} className="space-y-6">
-            <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 placeholder-gray-500 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
-            <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 placeholder-gray-500 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
-            <button type="submit" className={`w-full ${isSuperAdminLogin ? 'bg-red-600' : 'bg-brand-900'} text-white font-black uppercase py-4 rounded-2xl shadow-lg transition-transform active:scale-95`}>Authenticate</button>
-            <div className="flex flex-col gap-2 mt-4 text-center">
-               <button type="button" onClick={() => { setIsSuperAdminLogin(!isSuperAdminLogin); setError(''); }} className="text-[10px] font-black uppercase text-gray-500 hover:text-brand-900 transition-colors">Switch Terminal Mode</button>
-               {!isSuperAdminLogin && (
-                   <button type="button" onClick={() => setMode('REQUEST')} className="text-[10px] font-black uppercase text-brand-600 hover:text-brand-800 transition-colors flex items-center justify-center gap-1"><PlusCircle className="w-3 h-3"/> New Registration</button>
-               )}
+      return (
+          <div className="max-w-md mx-auto py-24 px-4">
+            <div className="bg-white p-12 rounded-[3rem] shadow-2xl text-center">
+              <img src={LOGO_URL} alt="Logo" className="w-32 mx-auto mb-6" referrerPolicy="no-referrer" />
+              <h2 className="text-3xl font-black uppercase tracking-tighter text-gray-900">Security Terminal</h2>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-8">Officer Auth Required</p>
+              {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
+              <form onSubmit={handleLogin} className="space-y-6">
+                <input type="text" placeholder="BADGE / USERNAME" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
+                <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+                <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl hover:bg-brand-800 transition-colors shadow-lg">Officer Login</button>
+                <button type="button" onClick={() => { setError(''); setMode('REQUEST'); }} className="text-brand-600 font-black uppercase text-[10px] py-1 hover:text-brand-800 tracking-widest">Apply for Officer Badge</button>
+              </form>
+              
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                  <button 
+                      onClick={() => { setCreds({username: 'josue@usguardco', password: 'solutions'}); setError(''); }} 
+                      className="text-[10px] font-black uppercase text-gray-400 hover:text-brand-600 flex items-center justify-center gap-2 mx-auto transition-colors"
+                  >
+                      <Lock className="w-3 h-3"/> System Admin Access
+                  </button>
+              </div>
             </div>
-          </form>
-        </div>
-      </div>
-    );
+          </div>
+      );
   }
 
   if (mode === 'REQUEST') {
-    return (
-       <div className="max-w-2xl mx-auto py-12 px-4">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
-             <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
-                <div className="flex items-center gap-4"><ShieldCheck className="w-10 h-10 text-brand-300"/><div><h2 className="text-2xl font-black uppercase tracking-tighter">Officer Access Request</h2></div></div>
-                <button onClick={() => setMode('LOGIN')} className="text-brand-300 hover:text-white flex items-center gap-1 text-[10px] font-black uppercase"><XCircle className="w-5 h-5"/> Cancel</button>
-             </div>
-             <form onSubmit={handleRegistration} className="p-10 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <input type="text" placeholder="FIRST NAME" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={regForm.firstName} onChange={e => setRegForm({...regForm, firstName: e.target.value})} />
-                   <input type="text" placeholder="LAST NAME" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={regForm.lastName} onChange={e => setRegForm({...regForm, lastName: e.target.value})} />
-                </div>
-                <input type="text" placeholder="BADGE / EMPLOYEE ID" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={regForm.badgeNumber} onChange={e => setRegForm({...regForm, badgeNumber: e.target.value})} />
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                   <div className="space-y-4">
-                      <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-white rounded-xl font-medium text-gray-900 placeholder-gray-500" value={regForm.username} onChange={e => setRegForm({...regForm, username: e.target.value})} />
-                      <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-white rounded-xl font-medium text-gray-900 placeholder-gray-500" value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} />
-                   </div>
-                </div>
-                <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-5 rounded-2xl shadow-xl">Submit Request</button>
-             </form>
-          </div>
-       </div>
-    );
-  }
-
-  if (mode === 'PROPERTY_SELECT') {
-    return (
-      <div className="max-w-4xl mx-auto py-24 px-4 text-center">
-        <img src={LOGO_URL} alt="Logo" className="w-40 mx-auto mb-10" referrerPolicy="no-referrer" />
-        <h2 className="text-3xl font-black uppercase tracking-tighter mb-4 text-gray-900">Deployment Site Selection</h2>
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em] mb-12">Select On-Duty Location to Access Terminal</p>
-        
-        {adminRole === 'SUPER_ADMIN' && (
-             <button 
-                onClick={() => {
-                    setOnDutyProperty('HEADQUARTERS'); // Set a dummy property for admin
-                    setMode('DASHBOARD');
-                    setActiveTab('ADMIN');
-                }}
-                className="mb-12 bg-red-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2 mx-auto"
-             >
-                <ShieldAlert className="w-4 h-4"/> Enter System Admin Console
-             </button>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {availableProperties.length === 0 ? (
-            <div className="col-span-full p-12 bg-white rounded-[2.5rem] shadow-xl border border-dashed border-gray-200">
-              <p className="text-gray-400 font-black uppercase text-xs">No active property contracts found.</p>
-            </div>
-          ) : availableProperties.map(prop => (
-            <button 
-              key={prop.id} 
-              onClick={() => selectDutyProperty(prop.propertyName)}
-              className="bg-white p-10 rounded-[2.5rem] shadow-xl border-2 border-transparent hover:border-brand-500 transition-all group flex flex-col items-center"
-            >
-              <div className="p-5 bg-brand-50 rounded-2xl mb-6 group-hover:scale-110 transition-transform">
-                <Building className="w-12 h-12 text-brand-900" />
+      return (
+          <div className="max-w-xl mx-auto py-24 px-4">
+              <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
+                  <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
+                      <div><h2 className="text-2xl font-black uppercase tracking-tighter">New Officer Application</h2><p className="text-[10px] text-brand-300 font-bold uppercase tracking-[0.3em]">Clearance Request</p></div>
+                      <button onClick={() => setMode('LOGIN')} className="text-brand-300 hover:text-white transition-colors"><XCircle className="w-6 h-6"/></button>
+                  </div>
+                  <form onSubmit={handleOfficerRegister} className="p-10 space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                          <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={officerForm.firstName} onChange={e => setOfficerForm({...officerForm, firstName: e.target.value})} />
+                          <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={officerForm.lastName} onChange={e => setOfficerForm({...officerForm, lastName: e.target.value})} />
+                      </div>
+                      <input type="text" placeholder="BADGE NUMBER" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={officerForm.badgeNumber} onChange={e => setOfficerForm({...officerForm, badgeNumber: e.target.value})} />
+                      <div className="grid grid-cols-2 gap-4 border-t pt-6">
+                           <input type="text" placeholder="USERNAME" required className="p-4 bg-white border rounded-xl font-medium text-gray-900" value={officerForm.credentials.username} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, username: e.target.value}})} />
+                           <input type="password" placeholder="PASSWORD" required className="p-4 bg-white border rounded-xl font-medium text-gray-900" value={officerForm.credentials.password} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, password: e.target.value}})} />
+                      </div>
+                      <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-5 rounded-2xl shadow-xl">Submit Application</button>
+                  </form>
               </div>
-              <span className="font-black uppercase text-lg tracking-tight text-gray-900">{prop.propertyName}</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase mt-2">{prop.city}, {prop.state}</span>
-            </button>
-          ))}
-        </div>
-        <button onClick={handleLogoff} className="mt-12 text-[10px] font-black uppercase text-gray-400 hover:text-red-500 transition-colors flex items-center gap-2 mx-auto"><LogOut className="w-4 h-4"/> Logoff Session</button>
-      </div>
-    );
+          </div>
+      );
   }
 
   if (mode === 'SUCCESS') {
     return (
       <div className="max-w-md mx-auto py-24 px-4 text-center">
         <div className="bg-white p-12 rounded-[3rem] shadow-2xl">
-          <BadgeCheck className="w-16 h-16 text-emerald-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black uppercase tracking-tighter mb-4">Request Filed</h2>
+          <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-6" />
+          <h2 className="text-2xl font-black uppercase tracking-tighter mb-4 text-gray-900">Application Sent</h2>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-loose mb-8">Pending Super Admin approval.</p>
           <button onClick={() => setMode('LOGIN')} className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl">Return to Login</button>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="relative min-h-screen pb-20">
-      {showUnlockModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-brand-900/80 backdrop-blur-md" onClick={() => setShowUnlockModal(false)}></div>
-              <div className="relative bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden animate-slide-up">
-                  <div className="bg-red-600 p-8 text-white flex justify-between items-center">
-                      <h3 className="text-xl font-black uppercase tracking-tighter">Security Challenge</h3>
-                      <button onClick={() => setShowUnlockModal(false)} className="text-red-200 hover:text-white"><XCircle/></button>
-                  </div>
-                  <form onSubmit={handleUnlockCredentials} className="p-10 space-y-6">
-                      <p className="text-xs font-bold text-gray-500 uppercase text-center">Re-enter Super Admin credentials to reveal sensitive data.</p>
-                      <input 
-                        type="text" 
-                        placeholder="USERNAME" 
-                        required 
-                        className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none" 
-                        value={unlockCreds.username} 
-                        onChange={e => setUnlockCreds({...unlockCreds, username: e.target.value})} 
-                      />
-                      <input 
-                        type="password" 
-                        placeholder="PASSWORD" 
-                        required 
-                        className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none" 
-                        value={unlockCreds.password} 
-                        onChange={e => setUnlockCreds({...unlockCreds, password: e.target.value})} 
-                      />
-                      <button type="submit" className="w-full bg-red-600 text-white font-black uppercase py-5 rounded-2xl shadow-xl flex items-center justify-center gap-2">
-                          <Unlock className="w-5 h-5"/> Unlock Vault
-                      </button>
-                  </form>
-              </div>
-          </div>
-      )}
-
-      {foundResident && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-brand-900/60 backdrop-blur-md"></div>
-          <div className="relative bg-white w-full max-w-lg rounded-[3.5rem] shadow-2xl overflow-hidden animate-slide-up">
-            <div className="p-10 text-center">
-              <h3 className="text-[10px] font-black uppercase text-brand-600 tracking-[0.3em] mb-6">Identity Verification</h3>
-              <div className="w-48 h-48 mx-auto rounded-[3rem] overflow-hidden border-8 border-brand-50 mb-6 shadow-xl">
-                <img src={foundResident.residentImageUrl} className="w-full h-full object-cover" />
-              </div>
-              <h4 className="text-3xl font-black uppercase tracking-tighter text-gray-900 mb-2">{foundResident.firstName} {foundResident.lastName}</h4>
-              <p className="text-brand-700 font-black uppercase text-xs mb-8">Unit {foundResident.unitNumber} • Active Profile</p>
+  // --- ADMIN DASHBOARD ---
+  if (mode === 'ADMIN_DASHBOARD') {
+      return (
+          <div className="min-h-screen bg-gray-900 pb-20 font-sans">
+              <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
               
-              <div className="bg-gray-50 p-6 rounded-3xl mb-10 border border-gray-100">
-                <p className="text-sm font-bold text-gray-600 uppercase">Does this picture match who you are checking-in?</p>
+              <div className="bg-black text-white p-6 sticky top-0 z-40 shadow-xl border-b border-gray-800">
+                  <div className="max-w-7xl mx-auto flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                          <ShieldAlert className="w-10 h-10 text-red-500" />
+                          <div>
+                              <h1 className="text-2xl font-black uppercase tracking-tighter text-white">Super Admin</h1>
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Global System Override</p>
+                          </div>
+                      </div>
+                      <button onClick={() => { setIsSuperAdmin(false); setMode('LOGIN'); setCreds({username: '', password: ''}); }} className="bg-gray-800 p-2 rounded-lg hover:bg-gray-700 transition-colors text-xs font-black uppercase px-4 text-gray-300">Logoff</button>
+                  </div>
               </div>
 
-              {resCheckInResult === 'NONE' ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <button onClick={() => finalizeResidentCheckIn('GRANTED')} className="bg-emerald-600 text-white py-5 rounded-3xl font-black uppercase shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 group">
-                    <Check className="group-hover:scale-125 transition-transform"/> YES
-                  </button>
-                  <button onClick={() => finalizeResidentCheckIn('DENIED')} className="bg-red-50 text-red-600 py-5 rounded-3xl font-black uppercase shadow-inner hover:bg-red-100 transition-all flex items-center justify-center gap-2 group">
-                    <X className="group-hover:scale-125 transition-transform"/> NO
-                  </button>
-                </div>
-              ) : (
-                <div className={`p-8 rounded-3xl flex flex-col items-center gap-4 animate-bounce ${resCheckInResult === 'GRANTED' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                   {resCheckInResult === 'GRANTED' ? <ShieldCheck className="w-12 h-12"/> : <ShieldAlert className="w-12 h-12"/>}
-                   <span className="text-3xl font-black uppercase tracking-tighter">{resCheckInResult === 'GRANTED' ? 'Access Granted' : 'Access Denied'}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {cameraMode !== 'NONE' && (
-        <CameraCapture label={cameraMode === 'FACE' ? 'Visitor Face' : 'Visitor ID'} onCancel={() => setCameraMode('NONE')} onCapture={(img) => {
-            if (cameraMode === 'FACE') setVisFacePhoto(img); else setVisIdPhoto(img);
-            setCameraMode('NONE');
-        }} />
-      )}
-      
-      <div className="fixed inset-0 z-0 flex items-center justify-center pointer-events-none">
-          <img src={LOGO_URL} className="w-[600px] opacity-[0.05]" alt="Watermark" referrerPolicy="no-referrer" />
-      </div>
-
-      <div className="relative z-10 bg-white/95 backdrop-blur-md border-b p-6 sticky top-0 shadow-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <ShieldCheck className="text-brand-900 w-8 h-8"/>
-            <div>
-                <h1 className="text-xl font-black uppercase tracking-tighter text-gray-900 leading-none">Duty Terminal</h1>
-                <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest mt-1 flex items-center gap-1"><MapPin className="w-3 h-3"/> {onDutyProperty}</p>
-            </div>
-          </div>
-          <div className="hidden lg:flex bg-gray-100 p-1 rounded-2xl overflow-x-auto border border-gray-200">
-            <button onClick={() => setActiveTab('DASHBOARD')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'DASHBOARD' ? 'bg-brand-900 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Actions</button>
-            <button onClick={() => setActiveTab('MONITOR')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'MONITOR' ? 'bg-brand-900 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Live Monitor</button>
-            <button onClick={() => setActiveTab('OVERWATCH')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'OVERWATCH' ? 'bg-brand-900 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Overwatch</button>
-            <button onClick={() => setActiveTab('INTERACTION')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'INTERACTION' ? 'bg-brand-900 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Interactions</button>
-            <button onClick={() => setActiveTab('MAINTENANCE')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'MAINTENANCE' ? 'bg-brand-900 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Report</button>
-            {adminRole === 'SUPER_ADMIN' && <button onClick={() => setActiveTab('SUMMARY')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'SUMMARY' ? 'bg-brand-900 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Summary</button>}
-            {adminRole === 'SUPER_ADMIN' && <button onClick={() => setActiveTab('ADMIN')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === 'ADMIN' ? 'bg-brand-900 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Admin</button>}
-          </div>
-          <div className="flex items-center gap-4">
-             <button onClick={() => setMode('PROPERTY_SELECT')} className="text-[10px] font-black uppercase text-gray-500 hover:text-brand-900 flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Switch Site</button>
-             <button onClick={handleLogoff} className="text-[10px] font-black uppercase text-red-500 font-black hover:text-red-700 transition-colors">Logoff</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto w-full p-10 flex-grow">
-        {activeTab === 'DASHBOARD' && (
-          <div className="animate-fade-in">
-             <div className="mb-12">
-                <h2 className="text-4xl font-black uppercase tracking-tighter text-gray-900">Operations Control</h2>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Active On-Duty Site: {onDutyProperty}</p>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <button onClick={() => setActiveTab('CHECKIN')} className="group bg-white p-12 rounded-[3.5rem] shadow-xl border-2 border-transparent hover:border-brand-500 transition-all flex flex-col items-center text-center">
-                   <div className="p-8 bg-brand-50 rounded-[2.5rem] mb-8 group-hover:scale-110 transition-transform">
-                      <Users className="w-16 h-16 text-brand-900" />
+              <div className="max-w-7xl mx-auto p-4 mt-8">
+                   <div className="flex overflow-x-auto gap-3 mb-8 pb-4 scrollbar-hide">
+                       <button onClick={() => setAdminTab('OVERVIEW')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'OVERVIEW' ? 'bg-white text-gray-900 shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                           <Globe className="w-4 h-4"/> Global Monitor
+                       </button>
+                       <button onClick={() => setAdminTab('MAINTENANCE')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'MAINTENANCE' ? 'bg-orange-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                           <Wrench className="w-4 h-4"/> Maintenance ({pendingMaintenance.length})
+                       </button>
+                       <button onClick={() => setAdminTab('ALERTS')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'ALERTS' ? 'bg-red-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                           <Bell className="w-4 h-4"/> Interaction Alerts ({pendingAlerts.length})
+                       </button>
+                       <button onClick={() => setAdminTab('OFFICERS')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'OFFICERS' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                           <BadgeCheck className="w-4 h-4"/> Officer Approvals ({pendingOfficers.length})
+                       </button>
+                       <button onClick={() => setAdminTab('PROPERTIES')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'PROPERTIES' ? 'bg-emerald-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                           <Building className="w-4 h-4"/> Property Requests ({pendingProperties.length})
+                       </button>
+                       <button onClick={() => setAdminTab('ACCOUNTS')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'ACCOUNTS' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                           <Database className="w-4 h-4"/> Accounts
+                       </button>
                    </div>
-                   <h3 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Check-in Visitor</h3>
-                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-4">Manual Entry • Biometric Capture</p>
-                </button>
 
-                <button onClick={() => setActiveTab('RESIDENT_CHECKIN')} className="group bg-white p-12 rounded-[3.5rem] shadow-xl border-2 border-transparent hover:border-emerald-500 transition-all flex flex-col items-center text-center">
-                   <div className="p-8 bg-emerald-50 rounded-[2.5rem] mb-8 group-hover:scale-110 transition-transform">
-                      <UserCheck className="w-16 h-16 text-emerald-600" />
-                   </div>
-                   <h3 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Resident Entry</h3>
-                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-4">ID Verify • Profile Sync</p>
-                </button>
-
-                <button onClick={() => setActiveTab('MONITOR')} className="group bg-white p-12 rounded-[3.5rem] shadow-xl border-2 border-transparent hover:border-red-500 transition-all flex flex-col items-center text-center">
-                   <div className="p-8 bg-red-50 rounded-[2.5rem] mb-8 group-hover:scale-110 transition-transform">
-                      <Clock className="w-16 h-16 text-red-600" />
-                   </div>
-                   <h3 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Check-out Log</h3>
-                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-4">Active Session Management</p>
-                </button>
-
-                <button onClick={() => setActiveTab('MAINTENANCE')} className="group bg-white p-12 rounded-[3.5rem] shadow-xl border-2 border-transparent hover:border-brand-500 transition-all flex flex-col items-center text-center">
-                   <div className="p-8 bg-orange-50 rounded-[2.5rem] mb-8 group-hover:scale-110 transition-transform">
-                      <Wrench className="w-16 h-16 text-orange-600" />
-                   </div>
-                   <h3 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Maintenance</h3>
-                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-4">Report Site Issues</p>
-                </button>
-
-                <button onClick={() => setActiveTab('INTERACTION')} className="group bg-white p-12 rounded-[3.5rem] shadow-xl border-2 border-transparent hover:border-brand-500 transition-all flex flex-col items-center text-center">
-                   <div className="p-8 bg-blue-50 rounded-[2.5rem] mb-8 group-hover:scale-110 transition-transform">
-                      <FileText className="w-16 h-16 text-blue-600" />
-                   </div>
-                   <h3 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Resident Note</h3>
-                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-4">Log Incident / Interaction</p>
-                </button>
-
-                <button onClick={() => setActiveTab('OVERWATCH')} className="group bg-white p-12 rounded-[3.5rem] shadow-xl border-2 border-transparent hover:border-brand-500 transition-all flex flex-col items-center text-center">
-                   <div className="p-8 bg-purple-50 rounded-[2.5rem] mb-8 group-hover:scale-110 transition-transform">
-                      <AlertTriangle className="w-16 h-16 text-purple-600" />
-                   </div>
-                   <h3 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Alerts & Watch</h3>
-                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-4">Overstays • Consecutive</p>
-                </button>
-             </div>
-
-             <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white/90 backdrop-blur-sm p-10 rounded-[3rem] shadow-lg border border-gray-100">
-                    <h4 className="text-lg font-black uppercase tracking-tight text-gray-900 mb-6 flex items-center gap-2"><Activity className="text-brand-900"/> Recent Activity Log</h4>
-                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                       {recentActivity.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                             <div className="flex items-center gap-4">
-                                <div className={`w-2 h-12 rounded-full ${item.type === 'VISITOR' ? 'bg-brand-500' : item.type === 'MAINTENANCE' ? 'bg-orange-500' : 'bg-red-500'}`}></div>
-                                <div>
-                                    <span className="text-[9px] font-black uppercase px-2 py-1 rounded bg-white border border-gray-200 text-gray-500 mb-1 inline-block">{item.type}</span>
-                                    <p className="text-sm font-black text-gray-800 uppercase leading-none">
-                                    {item.type === 'VISITOR' && `${item.data.firstName} ${item.data.lastName}`}
-                                    {item.type === 'MAINTENANCE' && `${item.data.type}`}
-                                    {item.type === 'ALERT' && `Note: ${item.data.residentName}`}
-                                    </p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase mt-1">{item.data.complex || item.data.propertyName}</p>
-                                </div>
-                             </div>
-                             <span className="text-[10px] font-bold text-gray-400">{format(item.time, 'HH:mm')}</span>
-                          </div>
-                       ))}
-                    </div>
-                </div>
-                <div className="bg-white/90 backdrop-blur-sm p-10 rounded-[3rem] shadow-lg border border-gray-100 flex flex-col items-center justify-center text-center">
-                    <ShieldCheck className="w-20 h-20 text-brand-50 mb-6"/>
-                    <h4 className="text-lg font-black uppercase tracking-tight text-gray-400">Secure Duty Station</h4>
-                    <p className="text-xs font-bold text-gray-300 uppercase tracking-[0.2em] mt-2">All actions encrypted and logged</p>
-                </div>
-             </div>
-          </div>
-        )}
-
-        {/* ... (Existing tabs: SUMMARY, RESIDENT_CHECKIN, CHECKIN) ... */}
-
-        {activeTab === 'OVERWATCH' && (
-            <div className="animate-fade-in space-y-8">
-               <button onClick={() => setActiveTab('DASHBOARD')} className="mb-4 flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-brand-900 transition-colors"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Operations</button>
-               
-               <div className="flex justify-between items-end">
-                  <div>
-                      <h2 className="text-4xl font-black uppercase tracking-tighter text-gray-900">Overwatch</h2>
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Pattern Detection & Violation Alerts</p>
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                   <div className="bg-white/90 backdrop-blur-sm p-8 rounded-[3rem] shadow-lg border border-red-100">
-                       <h3 className="text-xl font-black uppercase text-red-600 mb-6 flex items-center gap-2"><AlertTriangle className="w-6 h-6"/> Consecutive Visit Alerts</h3>
-                       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                           {consecutiveAlerts.length === 0 ? (
-                               <div className="p-8 text-center border-2 border-dashed border-gray-200 rounded-3xl">
-                                   <p className="text-xs font-black text-gray-400 uppercase">No consecutive violations detected.</p>
-                               </div>
-                           ) : consecutiveAlerts.map(alert => (
-                               <div key={alert.id} className="bg-red-50 p-6 rounded-3xl border border-red-100">
-                                   <div className="flex justify-between items-start">
+                   {adminTab === 'OVERVIEW' && (
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+                           {globalStats.map((stat: any) => (
+                               <div key={stat.name} className="bg-gray-800 p-6 rounded-[2.5rem] border border-gray-700 shadow-xl hover:border-gray-600 transition-colors">
+                                   <div className="flex justify-between items-start mb-6">
                                        <div>
-                                           <h4 className="text-lg font-black text-red-900 uppercase">{alert.visitorName}</h4>
-                                           <p className="text-xs font-bold text-red-700 uppercase mt-1">Visiting Unit {alert.unitNumber}</p>
+                                           <h3 className="text-lg font-black uppercase text-white tracking-tight">{stat.name}</h3>
+                                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live Status</p>
                                        </div>
-                                       <span className="bg-red-200 text-red-900 text-[10px] font-black px-3 py-1 rounded-full uppercase">{alert.consecutiveDays} Day Streak</span>
+                                       <div className="p-3 bg-gray-900 rounded-2xl border border-gray-700"><Building className="w-5 h-5 text-gray-500"/></div>
                                    </div>
-                                   <div className="mt-4 pt-4 border-t border-red-100 flex gap-4">
-                                       <div>
-                                           <p className="text-[9px] font-black text-red-400 uppercase">Resident</p>
-                                           <p className="text-xs font-bold text-red-800 uppercase">{alert.residentName}</p>
+                                   <div className="grid grid-cols-3 gap-3">
+                                       <div className="bg-gray-900 p-4 rounded-2xl text-center border border-gray-700">
+                                           <span className="block text-2xl font-black text-white">{stat.activeVisitors}</span>
+                                           <span className="text-[8px] font-bold text-gray-500 uppercase">Visitors</span>
                                        </div>
-                                       <div>
-                                           <p className="text-[9px] font-black text-red-400 uppercase">Last Check-In</p>
-                                           <p className="text-xs font-bold text-red-800 uppercase">{format(alert.lastCheckIn, 'MMM dd HH:mm')}</p>
+                                       <div className="bg-gray-900 p-4 rounded-2xl text-center border border-gray-700">
+                                           <span className="block text-2xl font-black text-red-500">{stat.alerts}</span>
+                                           <span className="text-[8px] font-bold text-gray-500 uppercase">Alerts</span>
+                                       </div>
+                                       <div className="bg-gray-900 p-4 rounded-2xl text-center border border-gray-700">
+                                           <span className="block text-2xl font-black text-orange-500">{stat.maintenance}</span>
+                                           <span className="text-[8px] font-bold text-gray-500 uppercase">Maint.</span>
                                        </div>
                                    </div>
                                </div>
                            ))}
                        </div>
-                   </div>
+                   )}
 
-                   <div className="bg-white/90 backdrop-blur-sm p-8 rounded-[3rem] shadow-lg border border-orange-100">
-                       <h3 className="text-xl font-black uppercase text-orange-600 mb-6 flex items-center gap-2"><Clock className="w-6 h-6"/> Active Overstays</h3>
-                       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                           {activeVisitors.filter(v => now > v.expirationTime).length === 0 ? (
-                               <div className="p-8 text-center border-2 border-dashed border-gray-200 rounded-3xl">
-                                   <p className="text-xs font-black text-gray-400 uppercase">No current overstays.</p>
-                               </div>
-                           ) : activeVisitors.filter(v => now > v.expirationTime).map(v => (
-                               <div key={v.id} className="bg-orange-50 p-6 rounded-3xl border border-orange-100">
-                                   <div className="flex justify-between items-start">
+                   {adminTab === 'MAINTENANCE' && (
+                       <div className="grid gap-4 animate-slide-up">
+                           {pendingMaintenance.length === 0 ? (
+                               <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-[3rem] text-gray-400 font-black uppercase">No pending maintenance requests.</div>
+                           ) : pendingMaintenance.map(m => (
+                               <div key={m.id} className="bg-gray-800 p-6 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between border border-gray-700 gap-6">
+                                   <div className="flex items-start gap-4">
+                                       <div className="p-4 bg-orange-900/20 rounded-2xl"><Wrench className="w-8 h-8 text-orange-500"/></div>
                                        <div>
-                                           <h4 className="text-lg font-black text-orange-900 uppercase">{v.firstName} {v.lastName}</h4>
-                                           <p className="text-xs font-bold text-orange-700 uppercase mt-1">Unit {v.residentUnit}</p>
+                                           <h3 className="text-xl font-black uppercase text-white">{m.type}</h3>
+                                           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{m.propertyName} • {format(m.reportedAt, 'MM/dd HH:mm')}</p>
+                                           <p className="text-sm text-gray-300 italic">"{m.details}"</p>
+                                           <p className="text-[10px] font-bold text-gray-500 uppercase mt-2">Reported by: {m.reportedBy}</p>
                                        </div>
-                                       <span className="bg-orange-200 text-orange-900 text-[10px] font-black px-3 py-1 rounded-full uppercase">EXPIRED</span>
                                    </div>
-                                   <p className="text-xs font-bold text-orange-800 mt-2 uppercase">Overdue by {formatDistanceToNow(v.expirationTime)}</p>
+                                   <div className="flex gap-2">
+                                       <button onClick={() => { db.updateMaintenanceStatus(m.id, 'APPROVED'); refreshAdminData(); }} className="px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px] flex-1 md:flex-none whitespace-nowrap">Approve & Forward</button>
+                                       <button onClick={() => { db.updateMaintenanceStatus(m.id, 'REJECTED'); refreshAdminData(); }} className="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl font-black uppercase text-[10px] flex-1 md:flex-none whitespace-nowrap">Deny</button>
+                                   </div>
                                </div>
                            ))}
                        </div>
-                   </div>
-               </div>
-            </div>
-        )}
+                   )}
 
-        {activeTab === 'MONITOR' && (
-          <div className="animate-fade-in">
-             <button onClick={() => setActiveTab('DASHBOARD')} className="mb-8 flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-brand-900 transition-colors"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Operations</button>
-             <div className="mb-8 flex justify-between items-end">
-                <div>
-                   <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Active Site Visitors</h2>
-                   <p className="text-[10px] font-bold text-brand-600 uppercase tracking-widest mt-1">Location: {onDutyProperty}</p>
-                </div>
-                <div className="flex items-center gap-2 bg-brand-50 px-4 py-2 rounded-xl border border-brand-100">
-                    <Timer className="w-4 h-4 text-brand-900"/>
-                    <span className="text-[10px] font-black text-brand-900 uppercase">Max Limit: 72 Hours</span>
-                </div>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeVisitors.length === 0 ? (
-                   <div className="col-span-full py-20 text-center text-gray-400 uppercase font-black tracking-widest text-xs bg-white/90 backdrop-blur-sm rounded-[3rem] border border-dashed border-gray-200">No active visitors.</div>
-                ) : activeVisitors.map(v => (
-                  <div key={v.id} className="bg-white/90 backdrop-blur-sm p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col gap-4">
-                     <div className="flex items-center gap-4">
-                        <img src={v.visitorImageUrl || 'https://picsum.photos/100/100'} className="w-16 h-16 rounded-2xl object-cover" />
-                        <div>
-                           <h4 className="font-black uppercase text-lg tracking-tight text-gray-900">{v.firstName} {v.lastName}</h4>
-                           <span className="text-[10px] font-black text-gray-500 uppercase">Unit {v.residentUnit}</span>
-                        </div>
-                     </div>
-                     <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
-                        <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase border-b border-gray-200 pb-2">
-                           <span>Elapsed</span>
-                           <span className="text-gray-900">{formatDistanceToNow(v.checkInTime)}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase">
-                           <span>Remaining</span>
-                           <span className={`${v.expirationTime < now ? 'text-red-600' : 'text-emerald-600'}`}>
-                               {v.expirationTime < now ? 'EXPIRED' : formatDistanceToNow(v.expirationTime)}
-                           </span>
-                        </div>
-                     </div>
-                     <button onClick={() => {db.checkOutVisitor(v.id); refreshData();}} className="w-full bg-white border-2 border-gray-100 text-gray-600 py-3 rounded-xl font-black uppercase text-[10px] hover:text-red-600 hover:border-red-100 transition-colors">Process Check-out</button>
-                  </div>
-                ))}
-             </div>
-          </div>
-        )}
-
-        {activeTab === 'SUMMARY' && adminRole === 'SUPER_ADMIN' && (
-          <div className="animate-fade-in space-y-12">
-             <button onClick={() => setActiveTab('DASHBOARD')} className="mb-4 flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-brand-900 transition-colors"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Operations</button>
-             
-             <div className="flex justify-between items-end">
-                <div>
-                    <h2 className="text-4xl font-black uppercase tracking-tighter text-gray-900">Executive Summary</h2>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Global System Overview</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">System Status</p>
-                    <p className="text-xl font-black text-emerald-600 uppercase">Operational</p>
-                </div>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white/90 backdrop-blur-sm p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-4 bg-brand-50 rounded-2xl"><Building className="w-6 h-6 text-brand-900"/></div>
-                        <span className="text-[10px] font-black bg-gray-100 text-gray-500 px-2 py-1 rounded">TOTAL</span>
-                    </div>
-                    <h3 className="text-4xl font-black text-gray-900 tracking-tighter">{availableProperties.length}</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Active Properties</p>
-                </div>
-
-                <div className="bg-white/90 backdrop-blur-sm p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-4 bg-blue-50 rounded-2xl"><BadgeCheck className="w-6 h-6 text-blue-600"/></div>
-                        <span className="text-[10px] font-black bg-gray-100 text-gray-500 px-2 py-1 rounded">TOTAL</span>
-                    </div>
-                    <h3 className="text-4xl font-black text-gray-900 tracking-tighter">{db.getOfficerRequests().filter(o => o.status === 'APPROVED').length}</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Security Officers</p>
-                </div>
-
-                <div className="bg-white/90 backdrop-blur-sm p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-4 bg-emerald-50 rounded-2xl"><UserCheck className="w-6 h-6 text-emerald-600"/></div>
-                        <span className="text-[10px] font-black bg-gray-100 text-gray-500 px-2 py-1 rounded">TOTAL</span>
-                    </div>
-                    <h3 className="text-4xl font-black text-gray-900 tracking-tighter">{db.getApprovedResidents().length}</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Verified Residents</p>
-                </div>
-
-                <div className="bg-white/90 backdrop-blur-sm p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-4 bg-orange-50 rounded-2xl"><Activity className="w-6 h-6 text-orange-600"/></div>
-                        <span className="text-[10px] font-black bg-gray-100 text-gray-500 px-2 py-1 rounded">TODAY</span>
-                    </div>
-                    <h3 className="text-4xl font-black text-gray-900 tracking-tighter">{db.getAllVisitors().filter(v => v.checkInTime > new Date().setHours(0,0,0,0)).length}</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Visitor Entries</p>
-                </div>
-             </div>
-
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 <div className="bg-white/90 backdrop-blur-sm p-10 rounded-[3rem] shadow-lg border border-gray-100">
-                    <h4 className="text-lg font-black uppercase tracking-tight text-gray-900 mb-6 flex items-center gap-2"><Activity className="text-brand-900"/> Global Activity Feed</h4>
-                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                       {recentActivity.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                             <div className="flex items-center gap-4">
-                                <div className={`w-2 h-12 rounded-full ${item.type === 'VISITOR' ? 'bg-brand-500' : item.type === 'MAINTENANCE' ? 'bg-orange-500' : 'bg-red-500'}`}></div>
-                                <div>
-                                    <span className="text-[9px] font-black uppercase px-2 py-1 rounded bg-white border border-gray-200 text-gray-500 mb-1 inline-block">{item.type}</span>
-                                    <p className="text-sm font-black text-gray-800 uppercase leading-none">
-                                    {item.type === 'VISITOR' && `${item.data.firstName} ${item.data.lastName}`}
-                                    {item.type === 'MAINTENANCE' && `${item.data.type}`}
-                                    {item.type === 'ALERT' && `Note: ${item.data.residentName}`}
-                                    </p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase mt-1">{item.data.complex || item.data.propertyName}</p>
-                                </div>
-                             </div>
-                             <span className="text-[10px] font-bold text-gray-400">{format(item.time, 'HH:mm')}</span>
-                          </div>
-                       ))}
-                    </div>
-                </div>
-
-                <div className="bg-brand-900 text-white p-10 rounded-[3rem] shadow-lg relative overflow-hidden">
-                    <div className="relative z-10">
-                        <h4 className="text-2xl font-black uppercase tracking-tight mb-4">System Alerts</h4>
-                        {pendingProperties.length > 0 || pendingOfficers.length > 0 ? (
-                            <div className="space-y-4">
-                                {pendingProperties.length > 0 && (
-                                    <div className="bg-white/10 p-4 rounded-2xl flex items-center gap-4">
-                                        <Building className="w-8 h-8 text-brand-300"/>
-                                        <div>
-                                            <p className="text-lg font-black">{pendingProperties.length}</p>
-                                            <p className="text-[10px] font-bold text-brand-300 uppercase">Pending Properties</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {pendingOfficers.length > 0 && (
-                                    <div className="bg-white/10 p-4 rounded-2xl flex items-center gap-4">
-                                        <BadgeCheck className="w-8 h-8 text-brand-300"/>
-                                        <div>
-                                            <p className="text-lg font-black">{pendingOfficers.length}</p>
-                                            <p className="text-[10px] font-bold text-brand-300 uppercase">Pending Officers</p>
-                                        </div>
-                                    </div>
-                                )}
-                                <button onClick={() => setActiveTab('ADMIN')} className="w-full bg-white text-brand-900 py-4 rounded-2xl font-black uppercase text-xs mt-4 hover:bg-brand-50 transition-colors">Review Pending Items</button>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-48 opacity-50">
-                                <CheckCircle className="w-16 h-16 mb-4"/>
-                                <p className="text-xs font-black uppercase tracking-widest">All Systems Normal</p>
-                            </div>
-                        )}
-                    </div>
-                    {/* Decorative background elements */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-brand-800 rounded-full blur-3xl -mr-16 -mt-16 opacity-50"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-600 rounded-full blur-3xl -ml-16 -mb-16 opacity-20"></div>
-                </div>
-             </div>
-          </div>
-        )}
-
-        {/* ... (Existing tabs: RESIDENT_CHECKIN, CHECKIN, MAINTENANCE, INTERACTION, ADMIN) ... */}
-        
-        {activeTab === 'RESIDENT_CHECKIN' && (
-          <div className="max-w-3xl mx-auto animate-slide-up">
-            <button onClick={() => setActiveTab('DASHBOARD')} className="mb-8 flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-brand-900 transition-colors"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Operations</button>
-            <div className="bg-white/90 backdrop-blur-sm p-12 rounded-[3.5rem] shadow-2xl border border-emerald-50 text-center">
-               <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-8">
-                  <UserCheck className="w-10 h-10 text-emerald-600"/>
-               </div>
-               <h2 className="text-3xl font-black uppercase tracking-tighter mb-4 text-gray-900">Resident Entry Verification</h2>
-               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-10">Cross-reference with Location: {onDutyProperty}</p>
-               
-               <form onSubmit={searchResident} className="space-y-6">
-                  {error && <div className="bg-red-50 text-red-600 p-6 rounded-3xl text-[10px] font-black uppercase flex items-center justify-center gap-2"><ShieldAlert className="w-4 h-4"/> {error}</div>}
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="ENTER ID NUMBER OR D.O.B (MM/DD/YYYY)" 
-                      required 
-                      className="w-full p-6 bg-gray-50 rounded-3xl text-center text-xl font-bold tracking-wide outline-none border-2 border-transparent focus:border-emerald-500 text-gray-900 placeholder:tracking-normal placeholder:font-medium placeholder:text-gray-400" 
-                      value={resSearchQuery} 
-                      onChange={e => setResSearchQuery(e.target.value)} 
-                    />
-                  </div>
-                  <button type="submit" className="w-full bg-emerald-600 text-white font-black uppercase py-6 rounded-[2rem] shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
-                    <Search className="w-5 h-5"/> Initiate Identify Lookup
-                  </button>
-               </form>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'CHECKIN' && (
-          <div className="max-w-4xl mx-auto animate-slide-up">
-            <button onClick={() => setActiveTab('DASHBOARD')} className="mb-8 flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-brand-900 transition-colors"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Operations</button>
-            {visSuccess ? (
-              <div className="bg-white/90 backdrop-blur-sm p-12 rounded-[3rem] shadow-2xl text-center">
-                <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-6" />
-                <h2 className="text-3xl font-black uppercase tracking-tight mb-2 text-gray-900">Visitor Logged</h2>
-                <button onClick={() => setVisSuccess(null)} className="mt-8 bg-brand-900 text-white px-10 py-5 rounded-3xl font-black uppercase shadow-lg">Process Next Guest</button>
-              </div>
-            ) : (
-              <div className="bg-white/90 backdrop-blur-sm rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100">
-                <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
-                   <h2 className="text-2xl font-black uppercase tracking-tighter">Visitor Protocol</h2>
-                   <div className="text-right">
-                      <p className="text-[9px] font-black text-brand-300 uppercase leading-none">Site Location</p>
-                      <p className="text-sm font-black uppercase tracking-tight">{onDutyProperty}</p>
-                   </div>
-                </div>
-                <form onSubmit={handleVisitorCheckIn} className="p-10 space-y-8">
-                  {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 animate-bounce"><ShieldAlert className="w-4 h-4"/>{error}</div>}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                       <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest border-b pb-2">Guest Details</h3>
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="relative">
-                             <input type="text" placeholder="UNIT SEARCH" className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500 outline-none border-2 border-transparent focus:border-brand-500" value={residentSearchQuery} onChange={e => setResidentSearchQuery(e.target.value)} />
-                          </div>
-                          <select required className="w-full p-4 bg-gray-50 rounded-xl font-medium outline-none text-gray-900" value={visForm.residentUnit} onChange={e => setVisForm({...visForm, residentUnit: e.target.value})} >
-                             <option value="">SELECT RESIDENT</option>
-                             {filteredUnits.map((u, i) => <option key={i} value={u.unit}>UNIT {u.unit} - {u.name}</option>)}
-                          </select>
+                   {adminTab === 'ALERTS' && (
+                       <div className="grid gap-4 animate-slide-up">
+                           {pendingAlerts.length === 0 ? (
+                               <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-[3rem] text-gray-400 font-black uppercase">No pending security alerts.</div>
+                           ) : pendingAlerts.map(a => (
+                               <div key={a.id} className="bg-gray-800 p-6 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between border border-red-900/30 gap-6">
+                                   <div className="flex items-start gap-4">
+                                       <div className="p-4 bg-red-900/20 rounded-2xl"><ShieldAlert className="w-8 h-8 text-red-500"/></div>
+                                       <div>
+                                           <h3 className="text-xl font-black uppercase text-white">{a.residentName} <span className="text-gray-500 text-sm">UNIT {a.unitNumber}</span></h3>
+                                           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{a.propertyName} • {format(a.timestamp, 'MM/dd HH:mm')}</p>
+                                           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
+                                               <p className="text-sm text-red-200 italic">"{a.details}"</p>
+                                           </div>
+                                           {a.thermsStatus === 'YES' && <p className="mt-2 text-[10px] font-black bg-red-600 text-white px-2 py-0.5 rounded inline-block uppercase">POLICE DISPATCHED</p>}
+                                       </div>
+                                   </div>
+                                   <div className="flex gap-2">
+                                       <button onClick={() => { db.updateAlertNoteStatus(a.id, 'FORWARDED_TO_PM'); refreshAdminData(); }} className="px-6 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px] flex-1 md:flex-none whitespace-nowrap">Approve & Forward</button>
+                                       <button onClick={() => { db.updateAlertNoteStatus(a.id, 'STORED_INTERNAL'); refreshAdminData(); }} className="px-6 py-4 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl font-black uppercase text-[10px] flex-1 md:flex-none whitespace-nowrap">Internal Archive</button>
+                                   </div>
+                               </div>
+                           ))}
                        </div>
-                       <input type="text" placeholder="GUEST FIRST NAME" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={visForm.firstName} onChange={e => setVisForm({...visForm, firstName: e.target.value})} />
-                       <input type="text" placeholder="GUEST LAST NAME" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={visForm.lastName} onChange={e => setVisForm({...visForm, lastName: e.target.value})} />
-                       <input type="text" placeholder="RELATIONSHIP" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={visForm.relationship} onChange={e => setVisForm({...visForm, relationship: e.target.value})} />
-                    </div>
-                    <div className="space-y-6">
-                       <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-widest border-b pb-2">Verification Photos</h3>
-                       <div className="grid grid-cols-2 gap-4">
-                          <div onClick={() => setCameraMode('ID')} className="aspect-square bg-gray-50 rounded-3xl border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden relative">
-                             {visIdPhoto ? <img src={visIdPhoto} className="w-full h-full object-cover"/> : <div className="text-center"><Camera className="mx-auto text-gray-300"/><p className="text-[8px] font-black uppercase mt-1 text-gray-400">Capture ID</p></div>}
-                          </div>
-                          <div onClick={() => setCameraMode('FACE')} className="aspect-square bg-gray-50 rounded-3xl border-2 border-dashed flex items-center justify-center cursor-pointer overflow-hidden relative">
-                             {visFacePhoto ? <img src={visFacePhoto} className="w-full h-full object-cover"/> : <div className="text-center"><Camera className="mx-auto text-gray-300"/><p className="text-[8px] font-black uppercase mt-1 text-gray-400">Capture Face</p></div>}
-                          </div>
-                       </div>
-                    </div>
-                  </div>
-                  <button type="submit" disabled={!visFacePhoto || !visIdPhoto} className={`w-full font-black uppercase py-6 rounded-3xl shadow-xl transition-all ${(!visFacePhoto || !visIdPhoto) ? 'bg-gray-200 text-gray-400' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>Process Check-in</button>
-                </form>
-              </div>
-            )}
-          </div>
-        )}
+                   )}
 
-        {activeTab === 'MAINTENANCE' && (
-          <div className="max-w-2xl mx-auto animate-slide-up">
-            <button onClick={() => setActiveTab('DASHBOARD')} className="mb-8 flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-brand-900 transition-colors"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Operations</button>
-            
-            {maintSuccess ? (
-                <div className="bg-white/90 backdrop-blur-sm p-12 rounded-[3rem] shadow-2xl text-center">
-                    <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-6" />
-                    <h2 className="text-2xl font-black uppercase tracking-tight mb-2 text-gray-900">Report Filed</h2>
-                </div>
-            ) : (
-                <div className="bg-white/90 backdrop-blur-sm rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100">
-                    <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
-                    <h2 className="text-2xl font-black uppercase tracking-tighter">Maintenance Report</h2>
-                    </div>
-                    <form onSubmit={handleMaintenanceSubmit} className="p-10 space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Issue Type</label>
-                            <select 
-                                className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none"
-                                value={maintForm.type}
-                                onChange={e => setMaintForm({...maintForm, type: e.target.value as MaintenanceType})}
-                            >
-                                <option value="Lights Out">Lights Out</option>
-                                <option value="Broken Fence">Broken Fence</option>
-                                <option value="Broken Window">Broken Window</option>
-                                <option value="Gate Malfunction">Gate Malfunction</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Description</label>
-                             <textarea 
-                                required
-                                rows={4}
-                                placeholder="Describe the issue location and severity..."
-                                className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500 outline-none"
-                                value={maintForm.details}
-                                onChange={e => setMaintForm({...maintForm, details: e.target.value})}
-                             />
-                        </div>
-                        <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-5 rounded-2xl shadow-xl hover:bg-brand-800">Submit Report</button>
-                    </form>
-                </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'INTERACTION' && (
-            <div className="max-w-2xl mx-auto animate-slide-up">
-                <button onClick={() => setActiveTab('DASHBOARD')} className="mb-8 flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-brand-900 transition-colors"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Operations</button>
-                
-                {interactionSuccess ? (
-                    <div className="bg-white/90 backdrop-blur-sm p-12 rounded-[3rem] shadow-2xl text-center">
-                        <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-6" />
-                        <h2 className="text-2xl font-black uppercase tracking-tight mb-2 text-gray-900">Interaction Logged</h2>
-                    </div>
-                ) : (
-                    <div className="bg-white/90 backdrop-blur-sm rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100">
-                        <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
-                           <div className="flex items-center gap-3">
-                               <Siren className="w-8 h-8"/>
-                               <h2 className="text-2xl font-black uppercase tracking-tighter">Incident / Resident Note</h2>
+                   {adminTab === 'ACCOUNTS' && (
+                       <div className="space-y-6 animate-slide-up">
+                           <div className="bg-gray-800 p-8 rounded-[3rem] border border-gray-700">
+                               <h3 className="text-xl font-black uppercase text-white mb-6">System Account Database</h3>
+                               <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-2">
+                                   {allAccounts.map((acc: any) => (
+                                       <div key={acc.id} className="bg-gray-900 p-4 rounded-2xl flex justify-between items-center border border-gray-800">
+                                           <div className="flex items-center gap-4">
+                                               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${acc.role === 'RESIDENT' ? 'bg-blue-900/50 text-blue-400' : acc.role === 'SECURITY' ? 'bg-red-900/50 text-red-400' : 'bg-emerald-900/50 text-emerald-400'}`}>
+                                                   {acc.role === 'RESIDENT' ? <Users className="w-5 h-5"/> : acc.role === 'SECURITY' ? <ShieldCheck className="w-5 h-5"/> : <Briefcase className="w-5 h-5"/>}
+                                               </div>
+                                               <div>
+                                                   <p className="text-sm font-black text-white uppercase">{acc.name}</p>
+                                                   <p className="text-[10px] text-gray-500 font-bold uppercase">{acc.role} • {acc.username}</p>
+                                               </div>
+                                           </div>
+                                           <button onClick={() => resetAccount(acc.id)} className="text-[10px] font-black uppercase bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-gray-700">
+                                               <RefreshCw className="w-3 h-3"/> Reset Pass
+                                           </button>
+                                       </div>
+                                   ))}
+                               </div>
                            </div>
-                        </div>
-                        <form onSubmit={handleInteractionSubmit} className="p-10 space-y-6">
-                            {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center gap-2"><AlertCircle className="w-4 h-4"/>{error}</div>}
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Resident Unit</label>
-                                <select 
-                                    className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none"
-                                    value={interactionForm.residentUnit}
-                                    onChange={e => setInteractionForm({...interactionForm, residentUnit: e.target.value})}
-                                >
-                                    <option value="">SELECT UNIT</option>
-                                    {filteredUnits.map((u, i) => <option key={i} value={u.unit}>UNIT {u.unit} - {u.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Details / Notes</label>
-                                <textarea 
-                                    required
-                                    rows={4}
-                                    placeholder="Describe the interaction, violation, incident, or general note..."
-                                    className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500 outline-none"
-                                    value={interactionForm.details}
-                                    onChange={e => setInteractionForm({...interactionForm, details: e.target.value})}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Police/Therms Contacted?</label>
-                                    <select 
-                                        className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none"
-                                        value={interactionForm.thermsStatus}
-                                        onChange={e => setInteractionForm({...interactionForm, thermsStatus: e.target.value as any})}
-                                    >
-                                        <option value="NO">No</option>
-                                        <option value="YES">Yes</option>
-                                    </select>
-                                </div>
-                                {interactionForm.thermsStatus === 'YES' && (
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Report Number</label>
-                                        <input 
-                                            type="text"
-                                            className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none"
-                                            value={interactionForm.thermsReportNumber}
-                                            onChange={e => setInteractionForm({...interactionForm, thermsReportNumber: e.target.value})}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                            <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-5 rounded-2xl shadow-xl hover:bg-brand-800">Submit Log</button>
-                        </form>
-                    </div>
-                )}
-            </div>
-        )}
+                       </div>
+                   )}
 
-        {activeTab === 'ADMIN' && adminRole === 'SUPER_ADMIN' && (
-          <div className="animate-fade-in space-y-12">
-             <button onClick={() => setActiveTab('DASHBOARD')} className="mb-4 flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest hover:text-brand-900 transition-colors"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Operations</button>
-             <div>
-                <h2 className="text-4xl font-black uppercase tracking-tighter text-gray-900 mb-6">System Administration</h2>
-                
-                {/* Property Requests */}
-                <section className="mb-12">
-                    <h3 className="text-xl font-black uppercase text-brand-900 mb-6 flex items-center gap-2"><Building className="w-6 h-6"/> Pending Property Contracts</h3>
-                    {pendingProperties.length === 0 ? (
-                        <p className="text-gray-400 font-bold uppercase text-xs bg-white/50 p-8 rounded-[2rem] border border-dashed border-gray-200 text-center">No pending property requests.</p>
-                    ) : (
-                        <div className="grid gap-4">
-                        {pendingProperties.map(p => (
-                            <div key={p.id} className="bg-white/90 backdrop-blur-sm p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                                <div>
-                                    <h4 className="font-black uppercase text-xl text-gray-900">{p.propertyName}</h4>
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase mt-1 tracking-widest">{p.city}, {p.state} • Mgr: {p.managerName}</p>
-                                    <div className="flex gap-4 mt-3">
-                                        <span className="text-[10px] bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-bold uppercase">{p.phoneNumber}</span>
-                                        <span className="text-[10px] bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-bold uppercase">{p.contactEmail}</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 w-full md:w-auto">
-                                    <button onClick={() => { db.approveProperty(p.id); refreshData(); }} className="flex-1 md:flex-none bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] hover:bg-emerald-600 shadow-lg shadow-emerald-200">Approve</button>
-                                    <button onClick={() => { db.rejectProperty(p.id); refreshData(); }} className="flex-1 md:flex-none bg-red-50 text-red-500 px-8 py-4 rounded-2xl font-black uppercase text-[10px] hover:bg-red-100 border border-red-100">Reject</button>
-                                </div>
-                            </div>
-                        ))}
-                        </div>
-                    )}
-                </section>
+                   {adminTab === 'OFFICERS' && (
+                       <div className="grid gap-4 animate-slide-up">
+                           {pendingOfficers.length === 0 ? (
+                               <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-[3rem] text-gray-400 font-black uppercase">No pending officer applications.</div>
+                           ) : pendingOfficers.map(o => (
+                               <div key={o.id} className="bg-gray-800 p-6 rounded-[2rem] flex items-center justify-between border border-gray-700">
+                                   <div className="flex items-center gap-4">
+                                       <div className="p-4 bg-gray-900 rounded-2xl"><UserCog className="w-8 h-8 text-gray-400"/></div>
+                                       <div>
+                                           <h3 className="text-xl font-black uppercase text-white">{o.firstName} {o.lastName}</h3>
+                                           <p className="text-xs font-bold text-gray-500 uppercase">Badge: {o.badgeNumber} • User: {o.credentials?.username}</p>
+                                       </div>
+                                   </div>
+                                   <div className="flex gap-2">
+                                       <button onClick={() => { db.approveOfficer(o.id); refreshAdminData(); }} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px]">Approve Badge</button>
+                                       <button onClick={() => { db.rejectOfficer(o.id); refreshAdminData(); }} className="px-6 py-3 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-xl font-black uppercase text-[10px]">Reject</button>
+                                   </div>
+                               </div>
+                           ))
+                       )}
+                   </div>
 
-                {/* Officer Requests */}
-                <section>
-                    <h3 className="text-xl font-black uppercase text-brand-900 mb-6 flex items-center gap-2"><BadgeCheck className="w-6 h-6"/> Pending Officer Access</h3>
-                    {pendingOfficers.length === 0 ? (
-                        <p className="text-gray-400 font-bold uppercase text-xs bg-white/50 p-8 rounded-[2rem] border border-dashed border-gray-200 text-center">No pending officer requests.</p>
-                    ) : (
-                        <div className="grid gap-4">
-                        {pendingOfficers.map(o => (
-                            <div key={o.id} className="bg-white/90 backdrop-blur-sm p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                                <div>
-                                    <h4 className="font-black uppercase text-xl text-gray-900">{o.lastName}, {o.firstName}</h4>
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase mt-1 tracking-widest">Badge: {o.badgeNumber} • User: {o.credentials?.username}</p>
-                                </div>
-                                <div className="flex gap-2 w-full md:w-auto">
-                                    <button onClick={() => { db.approveOfficer(o.id); refreshData(); }} className="flex-1 md:flex-none bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] hover:bg-emerald-600 shadow-lg shadow-emerald-200">Authorize</button>
-                                    <button onClick={() => { db.rejectOfficer(o.id); refreshData(); }} className="flex-1 md:flex-none bg-red-50 text-red-500 px-8 py-4 rounded-2xl font-black uppercase text-[10px] hover:bg-red-100 border border-red-100">Deny</button>
-                                </div>
-                            </div>
-                        ))}
-                        </div>
-                    )}
-                </section>
-             </div>
+                   {adminTab === 'PROPERTIES' && (
+                       <div className="grid gap-4 animate-slide-up">
+                           {pendingProperties.length === 0 ? (
+                               <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-[3rem] text-gray-400 font-black uppercase">No pending property requests.</div>
+                           ) : pendingProperties.map(p => (
+                               <div key={p.id} className="bg-gray-800 p-6 rounded-[2rem] flex items-center justify-between border border-gray-700">
+                                   <div className="flex items-center gap-4">
+                                       <div className="p-4 bg-gray-900 rounded-2xl"><Building className="w-8 h-8 text-gray-400"/></div>
+                                       <div>
+                                           <h3 className="text-xl font-black uppercase text-white">{p.propertyName}</h3>
+                                           <p className="text-xs font-bold text-gray-500 uppercase">{p.city}, {p.state} • Manager: {p.managerName}</p>
+                                       </div>
+                                   </div>
+                                   <div className="flex gap-2">
+                                       <button onClick={() => { db.approveProperty(p.id); refreshAdminData(); }} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black uppercase text-[10px]">Activate Property</button>
+                                       <button onClick={() => { db.rejectProperty(p.id); refreshAdminData(); }} className="px-6 py-3 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-xl font-black uppercase text-[10px]">Reject</button>
+                                   </div>
+                               </div>
+                           ))
+                       )}
+                   </div>
+              </div>
           </div>
-        )}
+      );
+  }
+
+  // --- PROPERTY SELECT FOR OFFICERS ---
+  if (mode === 'PROPERTY_SELECT') {
+      return (
+          <div className="max-w-4xl mx-auto py-24 px-4 text-center">
+              <h2 className="text-3xl font-black uppercase tracking-tighter text-brand-900 mb-8">Select Active Post</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {availableProperties.map(p => (
+                      <button key={p.id} onClick={() => handlePropertySelect(p.propertyName)} className="bg-white p-8 rounded-[2.5rem] shadow-xl hover:shadow-2xl transition-all border-4 border-transparent hover:border-brand-500 group">
+                          <Building className="w-12 h-12 text-gray-400 group-hover:text-brand-600 mx-auto mb-4" />
+                          <h3 className="text-xl font-black uppercase text-gray-900">{p.propertyName}</h3>
+                          <p className="text-xs font-bold text-gray-500 uppercase mt-2">{p.city}, {p.state}</p>
+                      </button>
+                  ))}
+              </div>
+          </div>
+      );
+  }
+
+  // --- OFFICER DASHBOARD ---
+  return (
+      <div className="min-h-screen pb-20 font-sans">
+          <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+          
+          {showQrScanner && <QRScanner onScan={handleResidentScan} onCancel={() => setShowQrScanner(false)} />}
+          {cameraTarget !== 'NONE' && (
+              <CameraCapture 
+                  label={cameraTarget === 'VISITOR' ? 'Visitor Photo' : 'ID Document'} 
+                  onCancel={() => setCameraTarget('NONE')} 
+                  onCapture={(img) => {
+                      if (cameraTarget === 'VISITOR') setVisitorPhoto(img);
+                      else setIdPhoto(img);
+                      setCameraTarget('NONE');
+                  }} 
+              />
+          )}
+
+          <div className="bg-brand-900 text-white p-4 sticky top-0 z-40 shadow-xl">
+              <div className="max-w-7xl mx-auto flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                      <ShieldCheck className="w-8 h-8 text-brand-300" />
+                      <div>
+                          <h1 className="text-xl font-black uppercase tracking-tighter">Security Ops</h1>
+                          <p className="text-[10px] font-bold text-brand-400 uppercase tracking-widest">{onDutyProperty}</p>
+                      </div>
+                  </div>
+                  <button onClick={() => setMode('LOGIN')} className="bg-brand-800 p-2 rounded-lg hover:bg-brand-700 transition-colors"><LogOut className="w-5 h-5"/></button>
+              </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto p-4 mt-6">
+              <div className="flex overflow-x-auto gap-2 pb-4 scrollbar-hide mb-6">
+                  {['DASHBOARD', 'CHECKIN', 'RESIDENT_CHECKIN', 'MONITOR'].map(t => (
+                      <button 
+                          key={t}
+                          onClick={() => setActiveTab(t as any)}
+                          className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] whitespace-nowrap transition-all ${activeTab === t ? 'bg-brand-900 text-white shadow-lg scale-105' : 'bg-white text-gray-500'}`}
+                      >
+                          {t.replace('_', ' ')}
+                      </button>
+                  ))}
+              </div>
+
+              {activeTab === 'DASHBOARD' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+                      <div onClick={() => setActiveTab('MONITOR')} className="bg-white p-6 rounded-[2rem] shadow-lg border-l-8 border-brand-500 cursor-pointer hover:translate-y-1 transition-transform">
+                          <div className="flex justify-between items-start mb-4">
+                              <div className="p-3 bg-brand-50 rounded-xl"><Users className="w-6 h-6 text-brand-600"/></div>
+                              <span className="text-3xl font-black text-gray-900">{activeVisitors.length}</span>
+                          </div>
+                          <h3 className="font-black uppercase text-gray-400 text-xs tracking-widest">Active Guests</h3>
+                      </div>
+                      
+                      <div className="bg-white p-6 rounded-[2rem] shadow-lg border-l-8 border-red-500">
+                          <div className="flex justify-between items-start mb-4">
+                              <div className="p-3 bg-red-50 rounded-xl"><AlertTriangle className="w-6 h-6 text-red-600"/></div>
+                              <span className="text-3xl font-black text-gray-900">{overstayAlerts.length}</span>
+                          </div>
+                          <h3 className="font-black uppercase text-gray-400 text-xs tracking-widest">Overstay Alerts</h3>
+                      </div>
+                  </div>
+              )}
+
+              {activeTab === 'CHECKIN' && (
+                  <div className="bg-white rounded-[2.5rem] shadow-xl p-8 animate-slide-up">
+                      <h2 className="text-2xl font-black uppercase text-gray-900 mb-6">Visitor Processing</h2>
+                      {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
+                      <form onSubmit={checkInVisitor} className="space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                              <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-sm" value={visitorForm.firstName} onChange={e => setVisitorForm({...visitorForm, firstName: e.target.value})} />
+                              <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-sm" value={visitorForm.lastName} onChange={e => setVisitorForm({...visitorForm, lastName: e.target.value})} />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                              <input type="text" placeholder="UNIT NO." required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-sm" value={visitorForm.residentUnit} onChange={e => setVisitorForm({...visitorForm, residentUnit: e.target.value})} />
+                              <select className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-sm" value={visitorForm.duration} onChange={e => setVisitorForm({...visitorForm, duration: Number(e.target.value)})}>
+                                  <option value={4}>4 Hours Pass</option>
+                                  <option value={12}>12 Hours Pass</option>
+                                  <option value={24}>24 Hours Pass</option>
+                                  <option value={72}>72 Hours (Weekend)</option>
+                              </select>
+                          </div>
+                          
+                          <div className="flex gap-4">
+                              <button type="button" onClick={() => setCameraTarget('VISITOR')} className={`flex-1 p-6 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 ${visitorPhoto ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-brand-500'}`}>
+                                  {visitorPhoto ? <CheckCircle className="w-6 h-6 text-emerald-500"/> : <Camera className="w-6 h-6 text-gray-400"/>}
+                                  <span className="text-[10px] font-black uppercase text-gray-500">Visitor Photo</span>
+                              </button>
+                              <button type="button" onClick={() => setCameraTarget('ID')} className={`flex-1 p-6 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 ${idPhoto ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-brand-500'}`}>
+                                  {idPhoto ? <CheckCircle className="w-6 h-6 text-emerald-500"/> : <CreditCard className="w-6 h-6 text-gray-400"/>}
+                                  <span className="text-[10px] font-black uppercase text-gray-500">ID Scan</span>
+                              </button>
+                          </div>
+
+                          <button type="submit" className="w-full bg-brand-900 text-white py-5 rounded-2xl font-black uppercase shadow-xl hover:bg-brand-800 transition-all">Authorize Entry</button>
+                      </form>
+                  </div>
+              )}
+
+              {activeTab === 'RESIDENT_CHECKIN' && (
+                  <div className="bg-white rounded-[2.5rem] shadow-xl p-8 animate-slide-up text-center">
+                      <h2 className="text-2xl font-black uppercase text-gray-900 mb-8">Resident Quick Entry</h2>
+                      
+                      {!foundResident ? (
+                        <div className="space-y-8">
+                            <button onClick={() => setShowQrScanner(true)} className="w-full py-12 bg-gray-50 rounded-[2rem] border-4 border-dashed border-gray-200 hover:border-brand-500 hover:bg-brand-50 transition-all group flex flex-col items-center justify-center">
+                                <QrCode className="w-20 h-20 text-gray-300 group-hover:text-brand-600 mb-4 transition-colors"/>
+                                <span className="text-sm font-black uppercase text-gray-500 group-hover:text-brand-900">Scan Digital ID</span>
+                            </button>
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                                <div className="relative flex justify-center"><span className="bg-white px-4 text-xs font-black text-gray-400 uppercase">Or Manual Search</span></div>
+                            </div>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    placeholder="Enter Unit Number or Name" 
+                                    className="flex-grow p-4 bg-gray-50 rounded-xl font-bold uppercase text-gray-900"
+                                    value={resSearchQuery}
+                                    onChange={e => setResSearchQuery(e.target.value)}
+                                />
+                                <button 
+                                    onClick={() => {
+                                        const r = db.lookupResidentByIdOrDob(resSearchQuery, onDutyProperty);
+                                        setFoundResident(r || null);
+                                        setResCheckInResult(r ? 'GRANTED' : 'DENIED');
+                                    }}
+                                    className="bg-brand-900 text-white px-6 rounded-xl"
+                                >
+                                    <Search />
+                                </button>
+                            </div>
+                        </div>
+                      ) : (
+                          <div className={`p-8 rounded-[2rem] border-4 ${resCheckInResult === 'GRANTED' ? 'border-emerald-500 bg-emerald-50' : 'border-red-500 bg-red-50'}`}>
+                               {resCheckInResult === 'GRANTED' ? <CheckCircle2 className="w-20 h-20 text-emerald-500 mx-auto mb-4"/> : <XCircle className="w-20 h-20 text-red-500 mx-auto mb-4"/>}
+                               <h3 className={`text-3xl font-black uppercase ${resCheckInResult === 'GRANTED' ? 'text-emerald-900' : 'text-red-900'}`}>{resCheckInResult}</h3>
+                               <p className="font-bold text-gray-700 mt-2 uppercase text-lg">{foundResident.firstName} {foundResident.lastName}</p>
+                               <p className="font-black text-gray-400 uppercase tracking-widest">Unit {foundResident.unitNumber}</p>
+                               <button onClick={() => { setFoundResident(null); setResSearchQuery(''); }} className="mt-8 bg-white px-8 py-3 rounded-xl font-black uppercase text-xs shadow-md">Reset Scanner</button>
+                          </div>
+                      )}
+                  </div>
+              )}
+
+              {activeTab === 'MONITOR' && (
+                  <div className="grid gap-4">
+                      {activeVisitors.length === 0 && <p className="text-center text-gray-400 font-bold uppercase py-10">No Active Visitors</p>}
+                      {activeVisitors.map(v => (
+                          <div key={v.id} className="bg-white p-6 rounded-[2rem] shadow-md flex justify-between items-center">
+                              <div className="flex items-center gap-4">
+                                  <img src={v.visitorImageUrl || 'https://via.placeholder.com/50'} className="w-12 h-12 rounded-xl object-cover" />
+                                  <div>
+                                      <h4 className="font-black uppercase text-gray-900">{v.firstName} {v.lastName}</h4>
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase">Visiting Unit {v.residentUnit}</p>
+                                  </div>
+                              </div>
+                              <button 
+                                  onClick={() => { db.checkOutVisitor(v.id); refreshData(); }}
+                                  className="bg-brand-50 text-brand-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-brand-100"
+                              >
+                                  Check Out
+                              </button>
+                          </div>
+                      ))}
+                  </div>
+              )}
+          </div>
       </div>
-    </div>
   );
 };
 

@@ -220,7 +220,7 @@ class MockDatabase {
     return this.residents.find(r => 
       r.status === 'APPROVED' && 
       r.complex === propertyName && 
-      (r.dlNumber.toLowerCase() === q || r.dateOfBirth === query)
+      (r.id === query || r.dlNumber.toLowerCase() === q || r.dateOfBirth === query || r.unitNumber.toLowerCase() === q)
     );
   }
 

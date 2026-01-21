@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/mockDb';
 import { ResidentProfile, VisitorProfile, MaintenanceRequest, AlertNote, VisitorOverstayAlert, PropertyRequest, ManagementStaffRequest } from '../types';
-import { Building, ShieldAlert, Wrench, Clock, ArrowRight, Home, History, User, AlertTriangle, X, CheckCircle2, AlertCircle, UserCheck, XCircle, PlusCircle, ChevronDown, UserPlus, MapPin, Phone, LogOut, Archive, Check, Eye, Edit3, Save, Activity, Search, Building2, List, FileUp, Timer, Lock, KeyRound, FileText, CreditCard } from 'lucide-react';
+import { Building, ShieldAlert, Wrench, Clock, ArrowRight, Home, History, User, AlertTriangle, X, CheckCircle2, AlertCircle, UserCheck, XCircle, PlusCircle, ChevronDown, UserPlus, MapPin, Phone, LogOut, Archive, Check, Eye, Edit3, Save, Activity, Search, Building2, List, FileUp, Timer, Lock, KeyRound, FileText, CreditCard, QrCode } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, formatDistanceToNow } from 'date-fns';
 
 const LOGO_URL = "https://lh3.googleusercontent.com/d/1MVJkilhkDs4l5oWQmbVgqOeXdUfYA7vp";
@@ -37,6 +37,7 @@ const ManagementPortal = () => {
 
   // Editing state
   const [editingResident, setEditingResident] = useState<ResidentProfile | null>(null);
+  const [viewingQrResident, setViewingQrResident] = useState<ResidentProfile | null>(null);
   const [activeModalTab, setActiveModalTab] = useState<'DETAILS' | 'HISTORY'>('DETAILS');
   const [resetPassword, setResetPassword] = useState('');
 
@@ -202,6 +203,7 @@ const ManagementPortal = () => {
     );
   }
 
+  // ... (Keep existing REGISTER, STAFF_REGISTER, SUCCESS modes same as original) ...
   if (mode === 'REGISTER' || mode === 'STAFF_REGISTER') {
     const isRequestingStaff = mode === 'STAFF_REGISTER';
     return (
@@ -305,10 +307,42 @@ const ManagementPortal = () => {
            </div>
        )}
 
+       {viewingQrResident && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-brand-900/80 backdrop-blur-md" onClick={() => setViewingQrResident(null)}></div>
+            <div className="relative bg-white w-full max-w-sm rounded-[3rem] shadow-2xl overflow-hidden animate-slide-up text-center">
+                <div className="bg-brand-900 p-8 text-white">
+                    <h3 className="text-xl font-black uppercase tracking-tighter">Resident Digital ID</h3>
+                    <p className="text-[10px] font-bold text-brand-300 uppercase mt-1">Official Access Token</p>
+                </div>
+                <div className="p-10 flex flex-col items-center">
+                    <div className="bg-white p-4 rounded-3xl shadow-lg border-4 border-brand-50 mb-6">
+                        <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({
+                                id: viewingQrResident.id,
+                                name: `${viewingQrResident.firstName} ${viewingQrResident.lastName}`,
+                                unit: viewingQrResident.unitNumber,
+                                complex: viewingQrResident.complex
+                            }))}`} 
+                            className="w-48 h-48"
+                            alt="Resident QR Code"
+                        />
+                    </div>
+                    <h4 className="text-lg font-black uppercase text-gray-900">{viewingQrResident.firstName} {viewingQrResident.lastName}</h4>
+                    <p className="text-xs font-bold text-gray-500 uppercase">Unit {viewingQrResident.unitNumber}</p>
+                    <button onClick={() => setViewingQrResident(null)} className="mt-8 bg-gray-100 text-gray-600 px-8 py-3 rounded-2xl font-black uppercase text-[10px] hover:bg-gray-200 transition-colors">
+                        Close
+                    </button>
+                </div>
+            </div>
+         </div>
+       )}
+
        {editingResident && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
            <div className="absolute inset-0 bg-brand-900/80 backdrop-blur-md" onClick={() => { setEditingResident(null); setResetPassword(''); }}></div>
            <form onSubmit={handleResidentUpdate} className="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+              {/* ... (Existing Modal Content) ... */}
               <div className="bg-brand-900 p-8 text-white flex justify-between items-center flex-shrink-0">
                 <div className="flex items-center gap-4">
                     <img src={editingResident.residentImageUrl} className="w-16 h-16 rounded-2xl object-cover ring-4 ring-brand-700" />
@@ -356,7 +390,7 @@ const ManagementPortal = () => {
 
                  {activeModalTab === 'HISTORY' && (
                      <div className="space-y-8">
-                         {/* Active Visitors */}
+                         {/* ... (Existing History Content) ... */}
                          <section>
                              <h4 className="text-sm font-black uppercase text-brand-900 mb-4 flex items-center gap-2"><Clock className="w-4 h-4"/> Active Visitors</h4>
                              <div className="space-y-2">
@@ -371,7 +405,6 @@ const ManagementPortal = () => {
                              </div>
                          </section>
 
-                         {/* Visitor History */}
                          <section>
                              <h4 className="text-sm font-black uppercase text-gray-500 mb-4 flex items-center gap-2"><History className="w-4 h-4"/> Visitor History</h4>
                              <div className="bg-gray-50 rounded-2xl p-4 max-h-40 overflow-y-auto custom-scrollbar space-y-2">
@@ -386,11 +419,9 @@ const ManagementPortal = () => {
                              </div>
                          </section>
 
-                         {/* Maintenance History */}
                          <section>
                              <h4 className="text-sm font-black uppercase text-orange-500 mb-4 flex items-center gap-2"><Wrench className="w-4 h-4"/> Unit Maintenance</h4>
                              <div className="space-y-2">
-                                 {/* Simple match based on property and potentially Unit string matching in details for mock purposes */}
                                  {db.getMaintenanceRequests().filter(m => m.propertyName === editingResident.complex && m.details.includes(editingResident.unitNumber)).length === 0 ? (
                                      <p className="text-xs text-gray-400 italic">No maintenance requests found explicitly mentioning Unit {editingResident.unitNumber}.</p>
                                  ) : db.getMaintenanceRequests().filter(m => m.propertyName === editingResident.complex && m.details.includes(editingResident.unitNumber)).map(m => (
@@ -405,7 +436,6 @@ const ManagementPortal = () => {
                              </div>
                          </section>
 
-                         {/* Security Notices */}
                          <section>
                              <h4 className="text-sm font-black uppercase text-red-500 mb-4 flex items-center gap-2"><ShieldAlert className="w-4 h-4"/> Security Notices</h4>
                              <div className="space-y-2">
@@ -437,6 +467,7 @@ const ManagementPortal = () => {
 
        <div className="relative z-10 max-w-7xl mx-auto py-10 px-4">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
+             {/* ... (Existing Header) ... */}
              <div className="flex items-center gap-4">
                 <div className="p-4 bg-white rounded-3xl shadow-sm border border-gray-100">
                     <Building2 className="w-10 h-10 text-brand-900"/>
@@ -466,8 +497,10 @@ const ManagementPortal = () => {
           </div>
 
           <div className="animate-fade-in">
+             {/* ... (Existing Tabs: MONITOR) ... */}
              {activeTab === 'MONITOR' && (
                <div className="space-y-6">
+                  {/* ... Same content ... */}
                   <div className="flex items-center gap-3 mb-6">
                      <Activity className="text-brand-900 w-8 h-8"/>
                      <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Active Site Guests</h2>
@@ -528,18 +561,25 @@ const ManagementPortal = () => {
                                 </div>
                              </div>
                           </div>
-                          <button onClick={() => setEditingResident(r)} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-brand-900 hover:bg-brand-100 transition-all opacity-0 group-hover:opacity-100">
-                             <Edit3 className="w-4 h-4"/>
-                          </button>
+                          <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setEditingResident(r)} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-brand-900 hover:bg-brand-100 transition-all">
+                                <Edit3 className="w-4 h-4"/>
+                            </button>
+                            <button onClick={() => setViewingQrResident(r)} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-brand-900 hover:bg-brand-100 transition-all">
+                                <QrCode className="w-4 h-4"/>
+                            </button>
+                          </div>
                        </div>
                      ))}
                   </div>
                </div>
              )}
 
+             {/* ... (Existing Tabs: VISITORS, MAINTENANCE, ISSUES, APPROVALS) ... */}
              {activeTab === 'VISITORS' && (
                <div className="space-y-6">
-                  <div className="flex items-center justify-between mb-6">
+                   {/* ... same content ... */}
+                   <div className="flex items-center justify-between mb-6">
                      <div className="flex items-center gap-3">
                         <History className="text-brand-900 w-8 h-8"/>
                         <div>
@@ -597,8 +637,9 @@ const ManagementPortal = () => {
              )}
 
              {activeTab === 'MAINTENANCE' && (
-               <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-6">
+                 <div className="space-y-6">
+                     {/* ... same content ... */}
+                     <div className="flex items-center gap-3 mb-6">
                      <Wrench className="text-brand-900 w-8 h-8"/>
                      <div>
                         <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Site Maintenance</h2>
@@ -629,12 +670,13 @@ const ManagementPortal = () => {
                        </div>
                      ))}
                   </div>
-               </div>
+                 </div>
              )}
 
              {activeTab === 'ISSUES' && !isStaff && (
-               <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-6">
+                 <div className="space-y-6">
+                     {/* ... same content ... */}
+                     <div className="flex items-center gap-3 mb-6">
                      <ShieldAlert className="text-red-600 w-8 h-8"/>
                      <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Incident Feed</h2>
                   </div>
@@ -653,12 +695,13 @@ const ManagementPortal = () => {
                        </div>
                      ))}
                   </div>
-               </div>
+                 </div>
              )}
 
              {activeTab === 'APPROVALS' && !isStaff && (
-               <div className="space-y-12">
-                  <section>
+                 <div className="space-y-12">
+                     {/* ... same content ... */}
+                     <section>
                      <div className="flex items-center gap-3 mb-6">
                         <UserPlus className="text-brand-900 w-8 h-8"/>
                         <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900">Staff Authorization</h2>
@@ -706,7 +749,7 @@ const ManagementPortal = () => {
                        </div>
                      )}
                   </section>
-               </div>
+                 </div>
              )}
           </div>
        </div>

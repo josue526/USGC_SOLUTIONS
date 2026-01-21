@@ -13,7 +13,8 @@
     "lucide-react": "^0.562.0",
     "react-dom": "^19.2.3",
     "react": "^19.0.0",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "jsqr": "1.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
