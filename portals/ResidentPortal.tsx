@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../services/mockDb';
@@ -44,7 +43,7 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
   };
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center p-4 pt-safe pb-safe">
       <div className="w-full max-w-xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl relative">
         <div className="bg-brand-900 p-6 text-white text-center">
           <h3 className="font-black uppercase tracking-widest text-sm">{label}</h3>
@@ -81,6 +80,7 @@ const ResidentPortal = () => {
   const [currentUser, setCurrentUser] = useState<ResidentProfile | null>(null);
   const [error, setError] = useState('');
   const [showQrModal, setShowQrModal] = useState(false);
+  const [requirePassword, setRequirePassword] = useState(true);
   
   const [formData, setFormData] = useState<Partial<ResidentProfile>>({
     complex: '', firstName: '', lastName: '', unitNumber: '',
@@ -97,7 +97,11 @@ const ResidentPortal = () => {
   useEffect(() => {
     // Load all approved properties directly
     setAvailableProperties(db.getApprovedProperties());
-  }, []);
+    
+    // Check Global Settings
+    const settings = db.getSettings();
+    setRequirePassword(settings.requireResidentPassword);
+  }, [mode]);
 
   const resetForm = () => {
     setFormData({
@@ -111,7 +115,9 @@ const ResidentPortal = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const user = db.authenticateResident(creds);
+    // If password disabled, we send empty string as password, logic handled in mockDb
+    const submissionCreds = requirePassword ? creds : { ...creds, password: '' };
+    const user = db.authenticateResident(submissionCreds);
     if (user) {
       setCurrentUser(user);
       setMode('DASHBOARD');
@@ -184,7 +190,7 @@ const ResidentPortal = () => {
 
   if (mode === 'INITIAL') {
     return (
-      <div className="max-w-2xl mx-auto py-24 px-4 text-center">
+      <div className="max-w-2xl mx-auto py-24 px-4 text-center pt-safe pb-safe">
         <img src={LOGO_URL} alt="Logo" className="w-48 mx-auto mb-8" referrerPolicy="no-referrer" />
         <h1 className="text-4xl font-black text-brand-900 tracking-tighter uppercase mb-2">Resident Access</h1>
         <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.3em] mb-12">Resident Authorization Portal</p>
@@ -204,7 +210,7 @@ const ResidentPortal = () => {
 
   if (mode === 'LOGIN') {
     return (
-      <div className="max-w-md mx-auto py-24 px-4">
+      <div className="max-w-md mx-auto py-24 px-4 pt-safe pb-safe">
         <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center">
           <img src={LOGO_URL} alt="Logo" className="w-32 mx-auto mb-6" referrerPolicy="no-referrer" />
           <button onClick={() => setMode('INITIAL')} className="mb-6 flex items-center text-[10px] font-black text-gray-600 uppercase tracking-widest hover:text-brand-900 transition-colors mx-auto"><ArrowLeft className="w-4 h-4 mr-1" /> Back</button>
@@ -212,7 +218,9 @@ const ResidentPortal = () => {
           {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center"><AlertCircle className="w-4 h-4 mr-2" /> {error}</div>}
           <form onSubmit={handleLogin} className="space-y-6">
             <input type="text" placeholder="USERNAME" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-brand-500 outline-none font-medium text-gray-900 placeholder-gray-500" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
-            <input type="password" placeholder="PASSWORD" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-brand-500 outline-none font-medium text-gray-900 placeholder-gray-500" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+            {requirePassword && (
+                <input type="password" placeholder="PASSWORD" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-brand-500 outline-none font-medium text-gray-900 placeholder-gray-500" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+            )}
             <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl shadow-lg hover:bg-brand-800 transition-colors">Authenticate</button>
           </form>
         </div>
@@ -222,7 +230,7 @@ const ResidentPortal = () => {
 
   if (mode === 'REGISTER') {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4">
+      <div className="max-w-4xl mx-auto py-12 px-4 pt-safe pb-safe">
         {cameraMode !== 'NONE' && (
           <CameraCapture 
             label={cameraMode === 'DL' ? 'State ID / Driver License' : 'Profile Photo'}
@@ -354,9 +362,9 @@ const ResidentPortal = () => {
 
   if (mode === 'DASHBOARD' && currentUser) {
     return (
-      <div className="relative min-h-screen">
+      <div className="relative min-h-screen pb-safe">
          {showQrModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pt-safe pb-safe">
                 <div className="absolute inset-0 bg-brand-900/80 backdrop-blur-md" onClick={() => setShowQrModal(false)}></div>
                 <div className="relative bg-white w-full max-w-sm rounded-[3rem] shadow-2xl overflow-hidden animate-slide-up text-center">
                     <div className="bg-brand-900 p-8 text-white">

@@ -1,9 +1,7 @@
-
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../services/mockDb';
 import { VisitorProfile, ResidentProfile, SecurityOfficerRequest, MaintenanceType, AlertNote, PropertyRequest, VisitorOverstayAlert, MaintenanceRequest } from '../types';
-import { ShieldCheck, UserCog, AlertCircle, Home, Camera, CheckCircle2, ShieldAlert, Building, Wrench, MessageSquare, FileText, Upload, ChevronRight, Check, Edit3, Save, X, Eye, FileBadge, PlusCircle, ArrowLeft, BadgeCheck, XCircle, ScanFace, CreditCard, RefreshCw, Search, Clock, Users, Activity, Bell, MapPin, UserCheck, LogOut, CheckCircle, Siren, Lock, Unlock, KeyRound, AlertTriangle, Timer, QrCode, ClipboardCheck, Briefcase, LayoutDashboard, Database, Power, Globe, Trash2, Filter } from 'lucide-react';
+import { ShieldCheck, UserCog, AlertCircle, Home, Camera, CheckCircle2, ShieldAlert, Building, Wrench, MessageSquare, FileText, Upload, ChevronRight, Check, Edit3, Save, X, Eye, FileBadge, PlusCircle, ArrowLeft, BadgeCheck, XCircle, ScanFace, CreditCard, RefreshCw, Search, Clock, Users, Activity, Bell, MapPin, UserCheck, LogOut, CheckCircle, Siren, Lock, Unlock, KeyRound, AlertTriangle, Timer, QrCode, ClipboardCheck, Briefcase, LayoutDashboard, Database, Power, Globe, Trash2, Filter, Settings } from 'lucide-react';
 import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import jsQR from 'jsqr';
 
@@ -47,7 +45,7 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
   };
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4 pt-safe pb-safe">
       <div className="w-full max-w-xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl relative border-4 border-gray-800">
         <div className="bg-brand-900 p-6 text-white text-center">
           <h3 className="font-black uppercase tracking-widest text-sm">{label}</h3>
@@ -126,8 +124,8 @@ const QRScanner = ({ onScan, onCancel }: { onScan: (data: string) => void, onCan
     }, []);
 
     return (
-        <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4">
-             <div className="relative w-full max-w-sm aspect-square bg-black border-4 border-brand-500/30 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4 pt-safe pb-safe">
+             <div className="relative w-full max-sm aspect-square bg-black border-4 border-brand-500/30 rounded-3xl overflow-hidden shadow-2xl">
                  <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
                  <canvas ref={canvasRef} className="hidden" />
                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -151,11 +149,12 @@ const SecurityDashboard = () => {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'SUMMARY' | 'MONITOR' | 'CHECKIN' | 'RESIDENT_CHECKIN' | 'MAINTENANCE' | 'INTERACTION' | 'ADMIN' | 'OVERWATCH'>('DASHBOARD');
   
   // Admin State
-  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'OFFICERS' | 'PROPERTIES' | 'MAINTENANCE' | 'ALERTS' | 'ACCOUNTS'>('OVERVIEW');
+  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'OFFICERS' | 'PROPERTIES' | 'MAINTENANCE' | 'ALERTS' | 'ACCOUNTS' | 'SYSTEM'>('OVERVIEW');
   const [pendingMaintenance, setPendingMaintenance] = useState<MaintenanceRequest[]>([]);
   const [pendingAlerts, setPendingAlerts] = useState<AlertNote[]>([]);
   const [allAccounts, setAllAccounts] = useState<any[]>([]);
   const [globalStats, setGlobalStats] = useState<any[]>([]);
+  const [globalSettings, setGlobalSettings] = useState({ requireResidentPassword: true, requirePropertyPassword: true });
 
   // Auth State
   const [onDutyProperty, setOnDutyProperty] = useState<string>('');
@@ -177,6 +176,9 @@ const SecurityDashboard = () => {
   const [cameraTarget, setCameraTarget] = useState<'NONE' | 'VISITOR' | 'ID'>('NONE');
   const [showQrScanner, setShowQrScanner] = useState(false);
 
+  // Live Timer
+  const [now, setNow] = useState(Date.now());
+
   // Data
   const [availableProperties, setAvailableProperties] = useState<PropertyRequest[]>([]);
   const [activeVisitors, setActiveVisitors] = useState<VisitorProfile[]>([]);
@@ -193,6 +195,11 @@ const SecurityDashboard = () => {
     if (isLoggedIn && onDutyProperty) refreshData();
   }, [isLoggedIn, onDutyProperty, activeTab]);
 
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000); // Update every minute
+    return () => clearInterval(timer);
+  }, []);
+
   const refreshData = () => {
       const visitors = db.getAllActiveVisitors().filter(v => v.complex === onDutyProperty);
       setActiveVisitors(visitors);
@@ -205,6 +212,7 @@ const SecurityDashboard = () => {
       setPendingMaintenance(db.getMaintenanceRequests().filter(m => m.status === 'PENDING_REVIEW'));
       setPendingAlerts(db.getAlertNotes().filter(a => a.status === 'UNDER_REVIEW'));
       setAllAccounts(db.getAllUserCredentials());
+      setGlobalSettings(db.getSettings());
 
       const visitors = db.getAllActiveVisitors();
       const props = db.getApprovedProperties();
@@ -222,7 +230,8 @@ const SecurityDashboard = () => {
       const username = creds.username.trim();
       const password = creds.password.trim();
       
-      if (username.toLowerCase() === 'josue@usguardco' && password === 'solutions') {
+      // Super Admin Backdoor (Updated username to 'josue')
+      if (username.toLowerCase() === 'josue' && password === 'pass') {
           setIsSuperAdmin(true);
           setMode('ADMIN_DASHBOARD');
           setError('');
@@ -306,23 +315,23 @@ const SecurityDashboard = () => {
 
   if (mode === 'LOGIN') {
       return (
-          <div className="max-w-md mx-auto py-24 px-4">
+          <div className="max-w-md mx-auto py-24 px-4 pt-safe pb-safe">
             <div className="bg-white p-12 rounded-[3rem] shadow-2xl text-center">
               <img src={LOGO_URL} alt="Logo" className="w-32 mx-auto mb-6" referrerPolicy="no-referrer" />
               <h2 className="text-3xl font-black uppercase tracking-tighter text-gray-900">Security Terminal</h2>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-8">Officer Auth Required</p>
               {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
               <form onSubmit={handleLogin} className="space-y-6">
-                <input type="text" placeholder="BADGE / USERNAME" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
-                <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+                <input type="text" placeholder="BADGE / USERNAME" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none text-base" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
+                <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none text-base" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
                 <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl hover:bg-brand-800 transition-colors shadow-lg">Officer Login</button>
                 <button type="button" onClick={() => { setError(''); setMode('REQUEST'); }} className="text-brand-600 font-black uppercase text-[10px] py-1 hover:text-brand-800 tracking-widest">Apply for Officer Badge</button>
               </form>
               
               <div className="mt-8 pt-6 border-t border-gray-100">
                   <button 
-                      onClick={() => { setCreds({username: 'josue@usguardco', password: 'solutions'}); setError(''); }} 
-                      className="text-[10px] font-black uppercase text-gray-400 hover:text-brand-600 flex items-center justify-center gap-2 mx-auto transition-colors"
+                      onClick={() => { setCreds({username: 'josue', password: 'pass'}); setError(''); }} 
+                      className="text-[10px] font-black uppercase text-gray-400 hover:text-red-600 flex items-center justify-center gap-2 mx-auto transition-colors"
                   >
                       <Lock className="w-3 h-3"/> System Admin Access
                   </button>
@@ -334,7 +343,7 @@ const SecurityDashboard = () => {
 
   if (mode === 'REQUEST') {
       return (
-          <div className="max-w-xl mx-auto py-24 px-4">
+          <div className="max-w-xl mx-auto py-24 px-4 pt-safe pb-safe">
               <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
                   <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
                       <div><h2 className="text-2xl font-black uppercase tracking-tighter">New Officer Application</h2><p className="text-[10px] text-brand-300 font-bold uppercase tracking-[0.3em]">Clearance Request</p></div>
@@ -342,13 +351,13 @@ const SecurityDashboard = () => {
                   </div>
                   <form onSubmit={handleOfficerRegister} className="p-10 space-y-6">
                       <div className="grid grid-cols-2 gap-4">
-                          <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={officerForm.firstName} onChange={e => setOfficerForm({...officerForm, firstName: e.target.value})} />
-                          <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={officerForm.lastName} onChange={e => setOfficerForm({...officerForm, lastName: e.target.value})} />
+                          <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 text-base" value={officerForm.firstName} onChange={e => setOfficerForm({...officerForm, firstName: e.target.value})} />
+                          <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 text-base" value={officerForm.lastName} onChange={e => setOfficerForm({...officerForm, lastName: e.target.value})} />
                       </div>
-                      <input type="text" placeholder="BADGE NUMBER" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={officerForm.badgeNumber} onChange={e => setOfficerForm({...officerForm, badgeNumber: e.target.value})} />
+                      <input type="text" placeholder="BADGE NUMBER" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 text-base" value={officerForm.badgeNumber} onChange={e => setOfficerForm({...officerForm, badgeNumber: e.target.value})} />
                       <div className="grid grid-cols-2 gap-4 border-t pt-6">
-                           <input type="text" placeholder="USERNAME" required className="p-4 bg-white border rounded-xl font-medium text-gray-900" value={officerForm.credentials.username} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, username: e.target.value}})} />
-                           <input type="password" placeholder="PASSWORD" required className="p-4 bg-white border rounded-xl font-medium text-gray-900" value={officerForm.credentials.password} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, password: e.target.value}})} />
+                           <input type="text" placeholder="USERNAME" required className="p-4 bg-white border rounded-xl font-medium text-gray-900 text-base" value={officerForm.credentials.username} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, username: e.target.value}})} />
+                           <input type="password" placeholder="PASSWORD" required className="p-4 bg-white border rounded-xl font-medium text-gray-900 text-base" value={officerForm.credentials.password} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, password: e.target.value}})} />
                       </div>
                       <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-5 rounded-2xl shadow-xl">Submit Application</button>
                   </form>
@@ -373,41 +382,44 @@ const SecurityDashboard = () => {
   // --- ADMIN DASHBOARD ---
   if (mode === 'ADMIN_DASHBOARD') {
       return (
-          <div className="min-h-screen bg-gray-900 pb-20 font-sans">
+          <div className="min-h-screen bg-gray-900 pb-20 pb-safe font-sans">
               <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
               
-              <div className="bg-black text-white p-6 sticky top-0 z-40 shadow-xl border-b border-gray-800">
+              <div className="bg-red-900 text-white p-6 sticky top-0 z-40 shadow-xl border-b border-red-800 pt-safe">
                   <div className="max-w-7xl mx-auto flex justify-between items-center">
                       <div className="flex items-center gap-4">
-                          <ShieldAlert className="w-10 h-10 text-red-500" />
+                          <ShieldAlert className="w-10 h-10 text-white" />
                           <div>
                               <h1 className="text-2xl font-black uppercase tracking-tighter text-white">Super Admin</h1>
-                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Global System Override</p>
+                              <p className="text-[10px] font-bold text-red-200 uppercase tracking-widest">Global System Override</p>
                           </div>
                       </div>
-                      <button onClick={() => { setIsSuperAdmin(false); setMode('LOGIN'); setCreds({username: '', password: ''}); }} className="bg-gray-800 p-2 rounded-lg hover:bg-gray-700 transition-colors text-xs font-black uppercase px-4 text-gray-300">Logoff</button>
+                      <button onClick={() => { setIsSuperAdmin(false); setMode('LOGIN'); setCreds({username: '', password: ''}); }} className="bg-red-950/50 p-2 rounded-lg hover:bg-red-800 transition-colors text-xs font-black uppercase px-4 text-red-100 border border-red-800">Logoff</button>
                   </div>
               </div>
 
               <div className="max-w-7xl mx-auto p-4 mt-8">
-                   <div className="flex overflow-x-auto gap-3 mb-8 pb-4 scrollbar-hide">
-                       <button onClick={() => setAdminTab('OVERVIEW')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'OVERVIEW' ? 'bg-white text-gray-900 shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                   <div className="flex overflow-x-auto gap-3 mb-8 pb-4 scrollbar-hide snap-x touch-pan-x">
+                       <button onClick={() => setAdminTab('OVERVIEW')} className={`shrink-0 snap-center px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'OVERVIEW' ? 'bg-white text-gray-900 shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
                            <Globe className="w-4 h-4"/> Global Monitor
                        </button>
-                       <button onClick={() => setAdminTab('MAINTENANCE')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'MAINTENANCE' ? 'bg-orange-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                       <button onClick={() => setAdminTab('MAINTENANCE')} className={`shrink-0 snap-center px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'MAINTENANCE' ? 'bg-orange-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
                            <Wrench className="w-4 h-4"/> Maintenance ({pendingMaintenance.length})
                        </button>
-                       <button onClick={() => setAdminTab('ALERTS')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'ALERTS' ? 'bg-red-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                       <button onClick={() => setAdminTab('ALERTS')} className={`shrink-0 snap-center px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'ALERTS' ? 'bg-red-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
                            <Bell className="w-4 h-4"/> Interaction Alerts ({pendingAlerts.length})
                        </button>
-                       <button onClick={() => setAdminTab('OFFICERS')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'OFFICERS' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                       <button onClick={() => setAdminTab('OFFICERS')} className={`shrink-0 snap-center px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'OFFICERS' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
                            <BadgeCheck className="w-4 h-4"/> Officer Approvals ({pendingOfficers.length})
                        </button>
-                       <button onClick={() => setAdminTab('PROPERTIES')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'PROPERTIES' ? 'bg-emerald-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                       <button onClick={() => setAdminTab('PROPERTIES')} className={`shrink-0 snap-center px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'PROPERTIES' ? 'bg-emerald-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
                            <Building className="w-4 h-4"/> Property Requests ({pendingProperties.length})
                        </button>
-                       <button onClick={() => setAdminTab('ACCOUNTS')} className={`px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'ACCOUNTS' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                       <button onClick={() => setAdminTab('ACCOUNTS')} className={`shrink-0 snap-center px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'ACCOUNTS' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
                            <Database className="w-4 h-4"/> Accounts
+                       </button>
+                       <button onClick={() => setAdminTab('SYSTEM')} className={`shrink-0 snap-center px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 whitespace-nowrap transition-all ${adminTab === 'SYSTEM' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                           <Settings className="w-4 h-4"/> System Config
                        </button>
                    </div>
 
@@ -517,6 +529,52 @@ const SecurityDashboard = () => {
                        </div>
                    )}
 
+                   {adminTab === 'SYSTEM' && (
+                       <div className="space-y-6 animate-slide-up">
+                           <div className="bg-gray-800 p-8 rounded-[3rem] border border-gray-700">
+                               <h3 className="text-xl font-black uppercase text-white mb-6">Global Login Configuration</h3>
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                   
+                                   {/* Resident Toggle */}
+                                   <div className="bg-gray-900 p-8 rounded-3xl border border-gray-700 flex justify-between items-center">
+                                       <div>
+                                           <h4 className="text-lg font-black uppercase text-white">Resident Portal</h4>
+                                           <p className="text-xs text-gray-400 mt-1">Require password for resident login.</p>
+                                       </div>
+                                       <button 
+                                           onClick={() => {
+                                               const newState = !globalSettings.requireResidentPassword;
+                                               db.updateSettings({ requireResidentPassword: newState });
+                                               refreshAdminData();
+                                           }}
+                                           className={`w-16 h-8 rounded-full transition-colors relative ${globalSettings.requireResidentPassword ? 'bg-emerald-500' : 'bg-gray-600'}`}
+                                       >
+                                           <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform shadow-md ${globalSettings.requireResidentPassword ? 'left-9' : 'left-1'}`}></div>
+                                       </button>
+                                   </div>
+
+                                   {/* Property Manager Toggle */}
+                                   <div className="bg-gray-900 p-8 rounded-3xl border border-gray-700 flex justify-between items-center">
+                                       <div>
+                                           <h4 className="text-lg font-black uppercase text-white">Property Portal</h4>
+                                           <p className="text-xs text-gray-400 mt-1">Require password for manager/staff login.</p>
+                                       </div>
+                                       <button 
+                                           onClick={() => {
+                                               const newState = !globalSettings.requirePropertyPassword;
+                                               db.updateSettings({ requirePropertyPassword: newState });
+                                               refreshAdminData();
+                                           }}
+                                           className={`w-16 h-8 rounded-full transition-colors relative ${globalSettings.requirePropertyPassword ? 'bg-emerald-500' : 'bg-gray-600'}`}
+                                       >
+                                           <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform shadow-md ${globalSettings.requirePropertyPassword ? 'left-9' : 'left-1'}`}></div>
+                                       </button>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   )}
+
                    {adminTab === 'OFFICERS' && (
                        <div className="grid gap-4 animate-slide-up">
                            {pendingOfficers.length === 0 ? (
@@ -535,9 +593,9 @@ const SecurityDashboard = () => {
                                        <button onClick={() => { db.rejectOfficer(o.id); refreshAdminData(); }} className="px-6 py-3 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-xl font-black uppercase text-[10px]">Reject</button>
                                    </div>
                                </div>
-                           ))
-                       )}
-                   </div>
+                           ))}
+                       </div>
+                   )}
 
                    {adminTab === 'PROPERTIES' && (
                        <div className="grid gap-4 animate-slide-up">
@@ -557,9 +615,9 @@ const SecurityDashboard = () => {
                                        <button onClick={() => { db.rejectProperty(p.id); refreshAdminData(); }} className="px-6 py-3 bg-red-900/50 hover:bg-red-900 text-red-200 rounded-xl font-black uppercase text-[10px]">Reject</button>
                                    </div>
                                </div>
-                           ))
-                       )}
-                   </div>
+                           ))}
+                       </div>
+                   )}
               </div>
           </div>
       );
@@ -568,7 +626,7 @@ const SecurityDashboard = () => {
   // --- PROPERTY SELECT FOR OFFICERS ---
   if (mode === 'PROPERTY_SELECT') {
       return (
-          <div className="max-w-4xl mx-auto py-24 px-4 text-center">
+          <div className="max-w-4xl mx-auto py-24 px-4 text-center pt-safe pb-safe">
               <h2 className="text-3xl font-black uppercase tracking-tighter text-brand-900 mb-8">Select Active Post</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {availableProperties.map(p => (
@@ -585,7 +643,7 @@ const SecurityDashboard = () => {
 
   // --- OFFICER DASHBOARD ---
   return (
-      <div className="min-h-screen pb-20 font-sans">
+      <div className="min-h-screen pb-20 pb-safe font-sans">
           <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
           
           {showQrScanner && <QRScanner onScan={handleResidentScan} onCancel={() => setShowQrScanner(false)} />}
@@ -601,7 +659,7 @@ const SecurityDashboard = () => {
               />
           )}
 
-          <div className="bg-brand-900 text-white p-4 sticky top-0 z-40 shadow-xl">
+          <div className="bg-brand-900 text-white p-4 sticky top-0 z-40 shadow-xl pt-safe">
               <div className="max-w-7xl mx-auto flex justify-between items-center">
                   <div className="flex items-center gap-4">
                       <ShieldCheck className="w-8 h-8 text-brand-300" />
@@ -653,12 +711,12 @@ const SecurityDashboard = () => {
                       {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
                       <form onSubmit={checkInVisitor} className="space-y-6">
                           <div className="grid grid-cols-2 gap-4">
-                              <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-sm" value={visitorForm.firstName} onChange={e => setVisitorForm({...visitorForm, firstName: e.target.value})} />
-                              <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-sm" value={visitorForm.lastName} onChange={e => setVisitorForm({...visitorForm, lastName: e.target.value})} />
+                              <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-base" value={visitorForm.firstName} onChange={e => setVisitorForm({...visitorForm, firstName: e.target.value})} />
+                              <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-base" value={visitorForm.lastName} onChange={e => setVisitorForm({...visitorForm, lastName: e.target.value})} />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
-                              <input type="text" placeholder="UNIT NO." required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-sm" value={visitorForm.residentUnit} onChange={e => setVisitorForm({...visitorForm, residentUnit: e.target.value})} />
-                              <select className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-sm" value={visitorForm.duration} onChange={e => setVisitorForm({...visitorForm, duration: Number(e.target.value)})}>
+                              <input type="text" placeholder="UNIT NO." required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-base" value={visitorForm.residentUnit} onChange={e => setVisitorForm({...visitorForm, residentUnit: e.target.value})} />
+                              <select className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-base" value={visitorForm.duration} onChange={e => setVisitorForm({...visitorForm, duration: Number(e.target.value)})}>
                                   <option value={4}>4 Hours Pass</option>
                                   <option value={12}>12 Hours Pass</option>
                                   <option value={24}>24 Hours Pass</option>
@@ -700,7 +758,7 @@ const SecurityDashboard = () => {
                                 <input 
                                     type="text" 
                                     placeholder="Enter Unit Number or Name" 
-                                    className="flex-grow p-4 bg-gray-50 rounded-xl font-bold uppercase text-gray-900"
+                                    className="flex-grow p-4 bg-gray-50 rounded-xl font-bold uppercase text-gray-900 text-base"
                                     value={resSearchQuery}
                                     onChange={e => setResSearchQuery(e.target.value)}
                                 />
@@ -731,23 +789,41 @@ const SecurityDashboard = () => {
               {activeTab === 'MONITOR' && (
                   <div className="grid gap-4">
                       {activeVisitors.length === 0 && <p className="text-center text-gray-400 font-bold uppercase py-10">No Active Visitors</p>}
-                      {activeVisitors.map(v => (
-                          <div key={v.id} className="bg-white p-6 rounded-[2rem] shadow-md flex justify-between items-center">
+                      {activeVisitors.map(v => {
+                          const timeLeft = v.expirationTime - now;
+                          const isExpiringSoon = timeLeft > 0 && timeLeft <= 3600000; // 1 hour
+                          const isExpired = timeLeft <= 0;
+                          
+                          return (
+                          <div key={v.id} className={`bg-white p-6 rounded-[2rem] shadow-md flex justify-between items-center transition-all ${isExpired ? 'border-l-8 border-red-500 bg-red-50/50' : isExpiringSoon ? 'border-l-8 border-orange-400 bg-orange-50/50' : 'border-l-8 border-transparent'}`}>
                               <div className="flex items-center gap-4">
                                   <img src={v.visitorImageUrl || 'https://via.placeholder.com/50'} className="w-12 h-12 rounded-xl object-cover" />
                                   <div>
                                       <h4 className="font-black uppercase text-gray-900">{v.firstName} {v.lastName}</h4>
                                       <p className="text-[10px] font-bold text-gray-400 uppercase">Visiting Unit {v.residentUnit}</p>
+                                      
+                                      <div className="flex gap-2 mt-1">
+                                        {isExpired && (
+                                            <span className="flex items-center gap-1 text-[9px] font-black text-red-600 uppercase bg-red-100 px-2 py-0.5 rounded-md">
+                                                <AlertTriangle className="w-3 h-3" /> Expired
+                                            </span>
+                                        )}
+                                        {isExpiringSoon && (
+                                            <span className="flex items-center gap-1 text-[9px] font-black text-orange-600 uppercase bg-orange-100 px-2 py-0.5 rounded-md">
+                                                <Timer className="w-3 h-3" /> Expiring Soon
+                                            </span>
+                                        )}
+                                      </div>
                                   </div>
                               </div>
                               <button 
                                   onClick={() => { db.checkOutVisitor(v.id); refreshData(); }}
-                                  className="bg-brand-50 text-brand-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-brand-100"
+                                  className="bg-brand-900 text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-brand-800 shadow-md active:scale-95 transition-all"
                               >
                                   Check Out
                               </button>
                           </div>
-                      ))}
+                      )})}
                   </div>
               )}
           </div>

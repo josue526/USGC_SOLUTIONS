@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/mockDb';
 import { ResidentProfile, VisitorProfile, MaintenanceRequest, AlertNote, VisitorOverstayAlert, PropertyRequest, ManagementStaffRequest } from '../types';
@@ -31,6 +30,7 @@ const ManagementPortal = () => {
   const [activeVisitors, setActiveVisitors] = useState<VisitorProfile[]>([]);
   const [historicalVisitors, setHistoricalVisitors] = useState<VisitorProfile[]>([]);
   const [availableProperties, setAvailableProperties] = useState<PropertyRequest[]>([]);
+  const [requirePassword, setRequirePassword] = useState(true);
   
   // Live Timer
   const [now, setNow] = useState(Date.now());
@@ -58,6 +58,10 @@ const ManagementPortal = () => {
 
   useEffect(() => {
     setAvailableProperties(db.getApprovedProperties());
+    
+    // Check Global Settings
+    const settings = db.getSettings();
+    setRequirePassword(settings.requirePropertyPassword);
   }, [mode]);
 
   // Live clock for duration updates
@@ -109,7 +113,8 @@ const ManagementPortal = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const pms = db.authenticatePM(creds);
+    const submissionCreds = requirePassword ? creds : { ...creds, password: '' };
+    const pms = db.authenticatePM(submissionCreds);
     if (pms.length > 0) {
       setMyProperties(pms);
       setSelectedPropId(pms[0].id);
@@ -191,7 +196,9 @@ const ManagementPortal = () => {
           {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
           <form onSubmit={handleLogin} className="space-y-6">
             <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
-            <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+            {requirePassword && (
+                <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+            )}
             <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl hover:bg-brand-800 transition-colors shadow-lg">Sign In</button>
             <div className="flex flex-col gap-2 mt-4">
               <button type="button" onClick={() => {setError(''); setMode('REGISTER');}} className="text-brand-600 font-black uppercase text-[10px] py-1 hover:text-brand-800 tracking-widest">Register New Property</button>

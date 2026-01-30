@@ -20,7 +20,7 @@ const Navigation = () => {
   ];
 
   return (
-    <nav className="bg-brand-900 text-white shadow-lg sticky top-0 z-50 border-b border-brand-700">
+    <nav className="bg-brand-900 text-white shadow-lg sticky top-0 z-50 border-b border-brand-700 pt-safe transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center">
@@ -84,7 +84,7 @@ const Navigation = () => {
 };
 
 const Footer = () => (
-  <footer className="bg-white border-t border-gray-100 py-10 mt-auto">
+  <footer className="bg-white border-t border-gray-100 py-10 mt-auto pb-safe">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
         <div className="flex flex-col items-center md:items-start">

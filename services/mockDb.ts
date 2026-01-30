@@ -1,6 +1,11 @@
 
 import { ResidentProfile, VisitorProfile, ComplexName, LogEntry, PropertyRequest, SecurityOfficerRequest, Credentials, MaintenanceRequest, AlertNote, VisitorOverstayAlert, ManagementStaffRequest, ResidentCheckInLog } from '../types';
 
+export interface GlobalSettings {
+  requireResidentPassword: boolean;
+  requirePropertyPassword: boolean;
+}
+
 class MockDatabase {
   private residents: ResidentProfile[] = [];
   private visitors: VisitorProfile[] = [];
@@ -11,6 +16,12 @@ class MockDatabase {
   private alertNotes: AlertNote[] = [];
   private residentCheckInLogs: ResidentCheckInLog[] = [];
   private logs: LogEntry[] = [];
+  
+  // Default Settings: Passwords Required
+  private settings: GlobalSettings = {
+    requireResidentPassword: true,
+    requirePropertyPassword: true
+  };
 
   constructor() {
     this.seedData();
@@ -113,6 +124,13 @@ class MockDatabase {
             }
          });
     }
+  }
+
+  // --- SETTINGS MANAGEMENT ---
+  getSettings() { return this.settings; }
+  
+  updateSettings(newSettings: Partial<GlobalSettings>) {
+    this.settings = { ...this.settings, ...newSettings };
   }
 
   // --- BATCH IMPORT ---
@@ -385,20 +403,32 @@ class MockDatabase {
   getApprovedResidents() { return this.residents.filter(r => r.status === 'APPROVED'); }
   
   authenticateResident(creds: Credentials) { 
-    return this.residents.find(r => r.status === 'APPROVED' && r.credentials?.username === creds.username && r.credentials?.password === creds.password); 
+    return this.residents.find(r => {
+      const basicMatch = r.status === 'APPROVED' && r.credentials?.username.toLowerCase() === creds.username.toLowerCase();
+      if (!basicMatch) return false;
+      
+      // If password required, check match
+      if (this.settings.requireResidentPassword) {
+         return r.credentials?.password === creds.password;
+      }
+      return true;
+    }); 
   }
   
   authenticatePM(creds: Credentials) { 
-    const managers = this.propertyRequests.filter(p => 
-      p.status === 'APPROVED' && 
-      p.credentials?.username === creds.username && 
-      p.credentials?.password === creds.password
-    );
-    const staff = this.staffRequests.filter(s => 
-      s.status === 'APPROVED' && 
-      s.credentials?.username === creds.username && 
-      s.credentials?.password === creds.password
-    ).map(s => {
+    const isPwRequired = this.settings.requirePropertyPassword;
+
+    const managers = this.propertyRequests.filter(p => {
+      const basicMatch = p.status === 'APPROVED' && p.credentials?.username.toLowerCase() === creds.username.toLowerCase();
+      if (!basicMatch) return false;
+      return isPwRequired ? p.credentials?.password === creds.password : true;
+    });
+
+    const staff = this.staffRequests.filter(s => {
+      const basicMatch = s.status === 'APPROVED' && s.credentials?.username.toLowerCase() === creds.username.toLowerCase();
+      if (!basicMatch) return false;
+      return isPwRequired ? s.credentials?.password === creds.password : true;
+    }).map(s => {
       const prop = this.propertyRequests.find(p => p.propertyName.toLowerCase() === s.propertyName.toLowerCase());
       return { ...prop, id: s.id, isStaff: true, propertyName: s.propertyName } as any;
     });

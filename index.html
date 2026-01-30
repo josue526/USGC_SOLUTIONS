@@ -2,8 +2,49 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>U.S. GUARD CO. Solutions</title>
+    
+    <!-- Android / Chrome PWA Meta Tags -->
+    <meta name="theme-color" content="#0c4a6e" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="US Guard Co" />
+    
+    <!-- Web App Manifest (Data URI for single-file portability) -->
+    <link rel="manifest" href='data:application/manifest+json,{
+      "name": "US GUARD CO Solutions",
+      "short_name": "US Guard",
+      "start_url": "/",
+      "display": "standalone",
+      "background_color": "#f3f4f6",
+      "theme_color": "#0c4a6e",
+      "orientation": "portrait",
+      "icons": [{
+        "src": "https://lh3.googleusercontent.com/d/1MVJkilhkDs4l5oWQmbVgqOeXdUfYA7vp",
+        "sizes": "512x512",
+        "type": "image/png"
+      }]
+    }' />
+
+    <!-- iOS / PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="US Guard Co" />
+    <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1MVJkilhkDs4l5oWQmbVgqOeXdUfYA7vp" />
+    
+    <!-- Open Graph / Social Media Meta Tags -->
+    <meta property="og:title" content="U.S. GUARD CO. Solutions" />
+    <meta property="og:description" content="U.S Guard Co. Solutions - A comprehensive custom Residential Management Security system" />
+    <meta property="og:image" content="https://lh3.googleusercontent.com/d/1MVJkilhkDs4l5oWQmbVgqOeXdUfYA7vp" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="U.S. GUARD CO. Solutions" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="U.S. GUARD CO. Solutions" />
+    <meta name="twitter:description" content="U.S Guard Co. Solutions - A comprehensive custom Residential Management Security system" />
+    <meta name="twitter:image" content="https://lh3.googleusercontent.com/d/1MVJkilhkDs4l5oWQmbVgqOeXdUfYA7vp" />
+
     <link rel="icon" href="https://lh3.googleusercontent.com/d/1MVJkilhkDs4l5oWQmbVgqOeXdUfYA7vp" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -24,6 +65,33 @@
         }
       }
     </script>
+    <style>
+      /* Mobile Optimizations (iOS & Android) */
+      @supports (-webkit-touch-callout: none) {
+        body {
+          -webkit-tap-highlight-color: transparent;
+        }
+      }
+      
+      /* Prevent input zoom on focus for mobile by forcing 16px */
+      @media screen and (max-width: 768px) {
+        input, select, textarea {
+          font-size: 16px !important;
+        }
+      }
+
+      /* Safe Area Utilities */
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
+      }
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .min-h-screen-safe {
+        min-height: 100vh; /* Fallback */
+        min-height: 100dvh;
+      }
+    </style>
   <script type="importmap">
 {
   "imports": {
@@ -40,7 +108,7 @@
 }
 </script>
 </head>
-  <body>
+  <body class="bg-gray-100">
     <div id="root"></div>
   </body>
 </html>
