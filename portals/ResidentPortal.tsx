@@ -386,6 +386,7 @@ const ResidentPortal = () => {
                         </div>
                         <h4 className="text-lg font-black uppercase text-gray-900">{currentUser.firstName} {currentUser.lastName}</h4>
                         <p className="text-xs font-bold text-gray-500 uppercase">Unit {currentUser.unitNumber}</p>
+                        <p className="text-[10px] font-bold text-brand-600 uppercase mt-1">{currentUser.complex}</p>
                         <button onClick={() => setShowQrModal(false)} className="mt-8 bg-gray-100 text-gray-600 px-8 py-3 rounded-2xl font-black uppercase text-[10px] hover:bg-gray-200 transition-colors">
                             Close Pass
                         </button>
@@ -419,7 +420,7 @@ const ResidentPortal = () => {
                         <button onClick={() => setTab('PROFILE')} className={`px-6 py-2 rounded-xl font-black uppercase text-[10px] ${tab === 'PROFILE' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-600'}`}>My Profile</button>
                         <button onClick={() => setTab('SECURITY')} className={`px-6 py-2 rounded-xl font-black uppercase text-[10px] ${tab === 'SECURITY' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-600'}`}>Visitor Rules</button>
                         <button onClick={() => setShowQrModal(true)} className="px-6 py-2 rounded-xl font-black uppercase text-[10px] bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-2">
-                             <QrCode className="w-3 h-3"/> Digital ID
+                             <QrCode className="w-3 h-3"/> Access QR Code
                         </button>
                       </div>
                   </div>
