@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { db } from '../services/mockDb';
 import { VisitorProfile, ResidentProfile, SecurityOfficerRequest, MaintenanceType, AlertNote, PropertyRequest, VisitorOverstayAlert, MaintenanceRequest } from '../types';
-import { ShieldCheck, UserCog, AlertCircle, Home, Camera, CheckCircle2, ShieldAlert, Building, Wrench, MessageSquare, FileText, Upload, ChevronRight, Check, Edit3, Save, X, Eye, FileBadge, PlusCircle, ArrowLeft, BadgeCheck, XCircle, ScanFace, CreditCard, RefreshCw, Search, Clock, Users, Activity, Bell, MapPin, UserCheck, LogOut, CheckCircle, Siren, Lock, Unlock, KeyRound, AlertTriangle, Timer, QrCode, ClipboardCheck, Briefcase, LayoutDashboard, Database, Power, Globe, Trash2, Filter, Settings } from 'lucide-react';
+import { ShieldCheck, UserCog, AlertCircle, Home, Camera, CheckCircle2, ShieldAlert, Building, Wrench, MessageSquare, FileText, Upload, ChevronRight, Check, Edit3, Save, X, Eye, FileBadge, PlusCircle, ArrowLeft, BadgeCheck, XCircle, ScanFace, CreditCard, RefreshCw, Search, Clock, Users, Activity, Bell, MapPin, UserCheck, LogOut, CheckCircle, Siren, Lock, Unlock, KeyRound, AlertTriangle, Timer, QrCode, ClipboardCheck, Briefcase, LayoutDashboard, Database, Power, Globe, Trash2, Filter, Settings, ChevronDown } from 'lucide-react';
 import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import jsQR from 'jsqr';
 
@@ -14,22 +14,31 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
   useEffect(() => {
+    let currentStream: MediaStream | null = null;
+    
     async function startCamera() {
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+        }
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+        currentStream = s;
         setStream(s);
         if (videoRef.current) videoRef.current.srcObject = s;
+        setError(null);
       } catch (err) {
         setError("Camera access denied. Please check permissions.");
       }
     }
     startCamera();
+    
     return () => {
-      stream?.getTracks().forEach(track => track.stop());
+      if (currentStream) currentStream.getTracks().forEach(track => track.stop());
     };
-  }, []);
+  }, [facingMode]);
 
   const capture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -44,11 +53,19 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
     }
   };
 
+  const toggleCamera = () => {
+      setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
   return (
     <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4 pt-safe pb-safe">
       <div className="w-full max-w-xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl relative border-4 border-gray-800">
-        <div className="bg-brand-900 p-6 text-white text-center">
+        <div className="bg-brand-900 p-6 text-white text-center flex justify-between items-center">
           <h3 className="font-black uppercase tracking-widest text-sm">{label}</h3>
+          <button onClick={toggleCamera} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-white" />
+              <span className="text-[10px] font-bold uppercase">Flip</span>
+          </button>
         </div>
         
         <div className="relative aspect-video bg-black flex items-center justify-center">
@@ -168,7 +185,7 @@ const SecurityDashboard = () => {
   const [resSearchQuery, setResSearchQuery] = useState('');
   const [foundResident, setFoundResident] = useState<ResidentProfile | null>(null);
   const [resCheckInResult, setResCheckInResult] = useState<'GRANTED' | 'DENIED' | null>(null);
-  const [visitorForm, setVisitorForm] = useState({ firstName: '', lastName: '', residentUnit: '', complex: '', relationship: '', duration: 4 });
+  const [visitorForm, setVisitorForm] = useState({ firstName: '', lastName: '', residentUnit: '', complex: '', relationship: '', duration: 72 });
   const [visitorPhoto, setVisitorPhoto] = useState<string | null>(null);
   const [idPhoto, setIdPhoto] = useState<string | null>(null);
 
@@ -185,6 +202,15 @@ const SecurityDashboard = () => {
   const [overstayAlerts, setOverstayAlerts] = useState<VisitorOverstayAlert[]>([]);
   const [pendingOfficers, setPendingOfficers] = useState<SecurityOfficerRequest[]>([]);
   const [pendingProperties, setPendingProperties] = useState<PropertyRequest[]>([]);
+
+  // Computed: Available Units for on-duty property
+  const registeredUnits = useMemo(() => {
+    if (!onDutyProperty) return [];
+    const units = db.getApprovedResidents()
+      .filter(r => r.complex === onDutyProperty)
+      .map(r => r.unitNumber);
+    return Array.from(new Set(units)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [onDutyProperty, mode]);
 
   useEffect(() => {
     setAvailableProperties(db.getApprovedProperties());
@@ -263,20 +289,25 @@ const SecurityDashboard = () => {
 
   const checkInVisitor = (e: React.FormEvent) => {
       e.preventDefault();
+      if (!visitorForm.residentUnit) {
+          setError('Please select a resident unit.');
+          return;
+      }
       try {
           db.checkInVisitor({
               ...visitorForm,
               complex: onDutyProperty,
+              expectedDurationHours: 72, // Fixed 72 hours
               visitorImageUrl: visitorPhoto || undefined,
               visitorIdImageUrl: idPhoto || undefined,
               residentId: 'lookup'
           } as any);
-          setVisitorForm({ firstName: '', lastName: '', residentUnit: '', complex: '', relationship: '', duration: 4 });
+          setVisitorForm({ firstName: '', lastName: '', residentUnit: '', complex: '', relationship: '', duration: 72 });
           setVisitorPhoto(null);
           setIdPhoto(null);
           setActiveTab('MONITOR');
           refreshData();
-          alert('Visitor Checked In Successfully');
+          alert('Visitor Authorized: 72-Hour Pass Issued.');
       } catch (err: any) { setError(err.message); }
   };
 
@@ -316,14 +347,20 @@ const SecurityDashboard = () => {
   if (mode === 'LOGIN') {
       return (
           <div className="max-w-md mx-auto py-24 px-4 pt-safe pb-safe">
-            <div className="bg-white p-12 rounded-[3rem] shadow-2xl text-center">
+            <div className="bg-white p-12 rounded-[3rem] shadow-2xl text-center border border-gray-100">
               <img src={LOGO_URL} alt="Logo" className="w-32 mx-auto mb-6" referrerPolicy="no-referrer" />
               <h2 className="text-3xl font-black uppercase tracking-tighter text-gray-900">Security Terminal</h2>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-8">Officer Auth Required</p>
               {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
               <form onSubmit={handleLogin} className="space-y-6">
-                <input type="text" placeholder="BADGE / USERNAME" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none text-base" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
-                <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none text-base" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+                <div className="text-left space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Username</label>
+                    <input type="text" required className="w-full p-4 bg-white rounded-2xl font-bold text-gray-900 border-2 border-gray-300 focus:border-brand-500 outline-none text-base placeholder-gray-400 focus:bg-gray-50 transition-colors shadow-sm" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
+                </div>
+                <div className="text-left space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Password</label>
+                    <input type="password" required className="w-full p-4 bg-white rounded-2xl font-bold text-gray-900 border-2 border-gray-300 focus:border-brand-500 outline-none text-base placeholder-gray-400 focus:bg-gray-50 transition-colors shadow-sm" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+                </div>
                 <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl hover:bg-brand-800 transition-colors shadow-lg">Officer Login</button>
                 <button type="button" onClick={() => { setError(''); setMode('REQUEST'); }} className="text-brand-600 font-black uppercase text-[10px] py-1 hover:text-brand-800 tracking-widest">Apply for Officer Badge</button>
               </form>
@@ -344,22 +381,37 @@ const SecurityDashboard = () => {
   if (mode === 'REQUEST') {
       return (
           <div className="max-w-xl mx-auto py-24 px-4 pt-safe pb-safe">
-              <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
+              <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
                   <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
                       <div><h2 className="text-2xl font-black uppercase tracking-tighter">New Officer Application</h2><p className="text-[10px] text-brand-300 font-bold uppercase tracking-[0.3em]">Clearance Request</p></div>
                       <button onClick={() => setMode('LOGIN')} className="text-brand-300 hover:text-white transition-colors"><XCircle className="w-6 h-6"/></button>
                   </div>
                   <form onSubmit={handleOfficerRegister} className="p-10 space-y-6">
                       <div className="grid grid-cols-2 gap-4">
-                          <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 text-base" value={officerForm.firstName} onChange={e => setOfficerForm({...officerForm, firstName: e.target.value})} />
-                          <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 text-base" value={officerForm.lastName} onChange={e => setOfficerForm({...officerForm, lastName: e.target.value})} />
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
+                            <input type="text" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 border-2 border-gray-200 outline-none focus:border-brand-500 transition-colors" value={officerForm.firstName} onChange={e => setOfficerForm({...officerForm, firstName: e.target.value})} />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
+                            <input type="text" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 border-2 border-gray-200 outline-none focus:border-brand-500 transition-colors" value={officerForm.lastName} onChange={e => setOfficerForm({...officerForm, lastName: e.target.value})} />
+                          </div>
                       </div>
-                      <input type="text" placeholder="BADGE NUMBER" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 text-base" value={officerForm.badgeNumber} onChange={e => setOfficerForm({...officerForm, badgeNumber: e.target.value})} />
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Badge Number</label>
+                        <input type="text" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 border-2 border-gray-200 outline-none focus:border-brand-500 transition-colors" value={officerForm.badgeNumber} onChange={e => setOfficerForm({...officerForm, badgeNumber: e.target.value})} />
+                      </div>
                       <div className="grid grid-cols-2 gap-4 border-t pt-6">
-                           <input type="text" placeholder="USERNAME" required className="p-4 bg-white border rounded-xl font-medium text-gray-900 text-base" value={officerForm.credentials.username} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, username: e.target.value}})} />
-                           <input type="password" placeholder="PASSWORD" required className="p-4 bg-white border rounded-xl font-medium text-gray-900 text-base" value={officerForm.credentials.password} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, password: e.target.value}})} />
+                           <div className="space-y-1">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Account Username</label>
+                             <input type="text" required className="w-full p-4 bg-white border-2 border-gray-200 rounded-xl font-bold text-gray-900 outline-none focus:border-brand-500 transition-colors" value={officerForm.credentials.username} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, username: e.target.value}})} />
+                           </div>
+                           <div className="space-y-1">
+                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Account Password</label>
+                             <input type="password" required className="w-full p-4 bg-white border-2 border-gray-200 rounded-xl font-bold text-gray-900 outline-none focus:border-brand-500 transition-colors" value={officerForm.credentials.password} onChange={e => setOfficerForm({...officerForm, credentials: {...officerForm.credentials, password: e.target.value}})} />
+                           </div>
                       </div>
-                      <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-5 rounded-2xl shadow-xl">Submit Application</button>
+                      <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-5 rounded-2xl shadow-xl hover:bg-brand-800 transition-colors">Submit Application</button>
                   </form>
               </div>
           </div>
@@ -369,11 +421,11 @@ const SecurityDashboard = () => {
   if (mode === 'SUCCESS') {
     return (
       <div className="max-w-md mx-auto py-24 px-4 text-center">
-        <div className="bg-white p-12 rounded-[3rem] shadow-2xl">
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-gray-100">
           <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-6" />
           <h2 className="text-2xl font-black uppercase tracking-tighter mb-4 text-gray-900">Application Sent</h2>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-loose mb-8">Pending Super Admin approval.</p>
-          <button onClick={() => setMode('LOGIN')} className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl">Return to Login</button>
+          <button onClick={() => setMode('LOGIN')} className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl hover:bg-brand-800 transition-colors">Return to Login</button>
         </div>
       </div>
     );
@@ -706,47 +758,78 @@ const SecurityDashboard = () => {
               )}
 
               {activeTab === 'CHECKIN' && (
-                  <div className="bg-white rounded-[2.5rem] shadow-xl p-8 animate-slide-up">
-                      <h2 className="text-2xl font-black uppercase text-gray-900 mb-6">Visitor Processing</h2>
-                      {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
-                      <form onSubmit={checkInVisitor} className="space-y-6">
-                          <div className="grid grid-cols-2 gap-4">
-                              <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-base" value={visitorForm.firstName} onChange={e => setVisitorForm({...visitorForm, firstName: e.target.value})} />
-                              <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-base" value={visitorForm.lastName} onChange={e => setVisitorForm({...visitorForm, lastName: e.target.value})} />
+                  <div className="bg-white rounded-[2.5rem] shadow-xl p-8 animate-slide-up border border-gray-100">
+                      <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-black uppercase text-gray-900">Visitor Authorization</h2>
+                        <div className="bg-brand-50 px-4 py-2 rounded-xl flex items-center gap-2">
+                            <Timer className="w-4 h-4 text-brand-600"/>
+                            <span className="text-[10px] font-black uppercase text-brand-900">72-Hour Standard Pass</span>
+                        </div>
+                      </div>
+
+                      {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 border border-red-100"><AlertCircle className="w-4 h-4"/> {error}</div>}
+                      
+                      <form onSubmit={checkInVisitor} className="space-y-8">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Visitor First Name</label>
+                                  <input type="text" required className="w-full p-4 bg-white rounded-xl font-bold uppercase text-gray-900 text-base border-2 border-gray-300 focus:border-brand-500 outline-none shadow-sm focus:bg-brand-50/10" value={visitorForm.firstName} onChange={e => setVisitorForm({...visitorForm, firstName: e.target.value})} />
+                              </div>
+                              <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Visitor Last Name</label>
+                                  <input type="text" required className="w-full p-4 bg-white rounded-xl font-bold uppercase text-gray-900 text-base border-2 border-gray-300 focus:border-brand-500 outline-none shadow-sm focus:bg-brand-50/10" value={visitorForm.lastName} onChange={e => setVisitorForm({...visitorForm, lastName: e.target.value})} />
+                              </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
-                              <input type="text" placeholder="UNIT NO." required className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-base" value={visitorForm.residentUnit} onChange={e => setVisitorForm({...visitorForm, residentUnit: e.target.value})} />
-                              <select className="p-4 bg-gray-50 rounded-xl font-bold uppercase text-base" value={visitorForm.duration} onChange={e => setVisitorForm({...visitorForm, duration: Number(e.target.value)})}>
-                                  <option value={4}>4 Hours Pass</option>
-                                  <option value={12}>12 Hours Pass</option>
-                                  <option value={24}>24 Hours Pass</option>
-                                  <option value={72}>72 Hours (Weekend)</option>
-                              </select>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-1.5 relative">
+                                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Authorized Unit Number</label>
+                                  <div className="relative">
+                                      <select 
+                                          required 
+                                          className="w-full p-4 bg-white rounded-xl font-bold uppercase text-gray-900 text-base border-2 border-gray-300 focus:border-brand-500 outline-none appearance-none shadow-sm focus:bg-brand-50/10" 
+                                          value={visitorForm.residentUnit} 
+                                          onChange={e => setVisitorForm({...visitorForm, residentUnit: e.target.value})}
+                                      >
+                                          <option value="">-- Select Registered Unit --</option>
+                                          {registeredUnits.map(unit => (
+                                              <option key={unit} value={unit}>Unit {unit}</option>
+                                          ))}
+                                      </select>
+                                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-900 pointer-events-none w-5 h-5"/>
+                                  </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Relationship to Resident</label>
+                                  <input type="text" placeholder="e.g. Guest, Vendor, Family" required className="w-full p-4 bg-white rounded-xl font-bold uppercase text-gray-900 text-base border-2 border-gray-300 focus:border-brand-500 outline-none placeholder-gray-400 shadow-sm focus:bg-brand-50/10" value={visitorForm.relationship} onChange={e => setVisitorForm({...visitorForm, relationship: e.target.value})} />
+                              </div>
                           </div>
                           
                           <div className="flex gap-4">
-                              <button type="button" onClick={() => setCameraTarget('VISITOR')} className={`flex-1 p-6 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 ${visitorPhoto ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-brand-500'}`}>
-                                  {visitorPhoto ? <CheckCircle className="w-6 h-6 text-emerald-500"/> : <Camera className="w-6 h-6 text-gray-400"/>}
-                                  <span className="text-[10px] font-black uppercase text-gray-500">Visitor Photo</span>
+                              <button type="button" onClick={() => setCameraTarget('VISITOR')} className={`flex-1 p-6 rounded-2xl border-4 border-dashed flex flex-col items-center justify-center gap-2 transition-all ${visitorPhoto ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300 hover:border-brand-500 bg-gray-50'}`}>
+                                  {visitorPhoto ? <CheckCircle className="w-10 h-10 text-emerald-500"/> : <Camera className="w-10 h-10 text-gray-400"/>}
+                                  <span className={`text-[11px] font-black uppercase ${visitorPhoto ? 'text-emerald-700' : 'text-gray-500'}`}>{visitorPhoto ? 'Photo Captured' : 'Capture Visitor Photo'}</span>
                               </button>
-                              <button type="button" onClick={() => setCameraTarget('ID')} className={`flex-1 p-6 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 ${idPhoto ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-brand-500'}`}>
-                                  {idPhoto ? <CheckCircle className="w-6 h-6 text-emerald-500"/> : <CreditCard className="w-6 h-6 text-gray-400"/>}
-                                  <span className="text-[10px] font-black uppercase text-gray-500">ID Scan</span>
+                              <button type="button" onClick={() => setCameraTarget('ID')} className={`flex-1 p-6 rounded-2xl border-4 border-dashed flex flex-col items-center justify-center gap-2 transition-all ${idPhoto ? 'border-emerald-500 bg-emerald-50' : 'border-gray-300 hover:border-brand-500 bg-gray-50'}`}>
+                                  {idPhoto ? <CheckCircle className="w-10 h-10 text-emerald-500"/> : <CreditCard className="w-10 h-10 text-gray-400"/>}
+                                  <span className={`text-[11px] font-black uppercase ${idPhoto ? 'text-emerald-700' : 'text-gray-500'}`}>{idPhoto ? 'ID Scanned' : 'Scan State ID / Passport'}</span>
                               </button>
                           </div>
 
-                          <button type="submit" className="w-full bg-brand-900 text-white py-5 rounded-2xl font-black uppercase shadow-xl hover:bg-brand-800 transition-all">Authorize Entry</button>
+                          <button type="submit" className="w-full bg-brand-900 text-white py-6 rounded-2xl font-black uppercase shadow-xl hover:bg-brand-800 transition-all text-lg flex items-center justify-center gap-3">
+                              <BadgeCheck className="w-6 h-6"/> Authorize Entry
+                          </button>
                       </form>
                   </div>
               )}
 
               {activeTab === 'RESIDENT_CHECKIN' && (
-                  <div className="bg-white rounded-[2.5rem] shadow-xl p-8 animate-slide-up text-center">
+                  <div className="bg-white rounded-[2.5rem] shadow-xl p-8 animate-slide-up text-center border border-gray-100">
                       <h2 className="text-2xl font-black uppercase text-gray-900 mb-8">Resident Quick Entry</h2>
                       
                       {!foundResident ? (
                         <div className="space-y-8">
-                            <button onClick={() => setShowQrScanner(true)} className="w-full py-12 bg-gray-50 rounded-[2rem] border-4 border-dashed border-gray-200 hover:border-brand-500 hover:bg-brand-50 transition-all group flex flex-col items-center justify-center">
+                            <button onClick={() => setShowQrScanner(true)} className="w-full py-12 bg-gray-50 rounded-[2rem] border-4 border-dashed border-gray-300 hover:border-brand-500 hover:bg-brand-50 transition-all group flex flex-col items-center justify-center">
                                 <QrCode className="w-20 h-20 text-gray-300 group-hover:text-brand-600 mb-4 transition-colors"/>
                                 <span className="text-sm font-black uppercase text-gray-500 group-hover:text-brand-900">Scan Digital ID</span>
                             </button>
@@ -758,7 +841,7 @@ const SecurityDashboard = () => {
                                 <input 
                                     type="text" 
                                     placeholder="Enter Unit Number or Name" 
-                                    className="flex-grow p-4 bg-gray-50 rounded-xl font-bold uppercase text-gray-900 text-base"
+                                    className="flex-grow p-4 bg-white rounded-xl font-bold uppercase text-gray-900 text-base border-2 border-gray-300 focus:border-brand-500 outline-none shadow-sm"
                                     value={resSearchQuery}
                                     onChange={e => setResSearchQuery(e.target.value)}
                                 />
@@ -768,7 +851,7 @@ const SecurityDashboard = () => {
                                         setFoundResident(r || null);
                                         setResCheckInResult(r ? 'GRANTED' : 'DENIED');
                                     }}
-                                    className="bg-brand-900 text-white px-6 rounded-xl"
+                                    className="bg-brand-900 text-white px-8 rounded-xl"
                                 >
                                     <Search />
                                 </button>
@@ -800,7 +883,7 @@ const SecurityDashboard = () => {
                                   <img src={v.visitorImageUrl || 'https://via.placeholder.com/50'} className="w-12 h-12 rounded-xl object-cover" />
                                   <div>
                                       <h4 className="font-black uppercase text-gray-900">{v.firstName} {v.lastName}</h4>
-                                      <p className="text-[10px] font-bold text-gray-400 uppercase">Visiting Unit {v.residentUnit}</p>
+                                      <p className="text-[10px] font-bold text-gray-500 uppercase">Visiting Unit {v.residentUnit}</p>
                                       
                                       <div className="flex gap-2 mt-1">
                                         {isExpired && (

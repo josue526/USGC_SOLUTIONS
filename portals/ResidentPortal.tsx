@@ -12,22 +12,31 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
   useEffect(() => {
+    let currentStream: MediaStream | null = null;
+    
     async function startCamera() {
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+        }
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+        currentStream = s;
         setStream(s);
         if (videoRef.current) videoRef.current.srcObject = s;
+        setError(null);
       } catch (err) {
         setError("Camera access denied. Please check permissions.");
       }
     }
     startCamera();
+    
     return () => {
-      stream?.getTracks().forEach(track => track.stop());
+      if (currentStream) currentStream.getTracks().forEach(track => track.stop());
     };
-  }, []);
+  }, [facingMode]);
 
   const capture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -42,11 +51,19 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
     }
   };
 
+  const toggleCamera = () => {
+      setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center p-4 pt-safe pb-safe">
-      <div className="w-full max-w-xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl relative">
-        <div className="bg-brand-900 p-6 text-white text-center">
+    <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4 pt-safe pb-safe">
+      <div className="w-full max-w-xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl relative border-4 border-gray-800">
+        <div className="bg-brand-900 p-6 text-white text-center flex justify-between items-center">
           <h3 className="font-black uppercase tracking-widest text-sm">{label}</h3>
+          <button onClick={toggleCamera} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-white" />
+              <span className="text-[10px] font-bold uppercase">Flip</span>
+          </button>
         </div>
         
         <div className="relative aspect-video bg-black flex items-center justify-center">
@@ -59,11 +76,11 @@ const CameraCapture = ({ onCapture, onCancel, label }: { onCapture: (img: string
         </div>
 
         <div className="p-8 flex justify-between items-center bg-gray-50">
-          <button onClick={onCancel} className="text-[10px] font-black uppercase text-gray-400 hover:text-red-500 transition-colors">Cancel</button>
-          <button onClick={capture} className="bg-brand-900 text-white p-6 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all">
+          <button onClick={onCancel} className="text-[10px] font-black uppercase text-gray-500 hover:text-red-500 transition-colors">Cancel</button>
+          <button onClick={capture} className="bg-brand-900 text-white p-6 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border-2 border-brand-700">
             <Camera className="w-8 h-8" />
           </button>
-          <div className="w-12" /> {/* Spacer */}
+          <div className="w-12" />
         </div>
       </div>
       <p className="mt-6 text-white/50 text-[10px] font-bold uppercase tracking-[0.3em]">Center {label} in frame</p>
@@ -211,15 +228,15 @@ const ResidentPortal = () => {
   if (mode === 'LOGIN') {
     return (
       <div className="max-w-md mx-auto py-24 px-4 pt-safe pb-safe">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center border border-gray-100">
           <img src={LOGO_URL} alt="Logo" className="w-32 mx-auto mb-6" referrerPolicy="no-referrer" />
           <button onClick={() => setMode('INITIAL')} className="mb-6 flex items-center text-[10px] font-black text-gray-600 uppercase tracking-widest hover:text-brand-900 transition-colors mx-auto"><ArrowLeft className="w-4 h-4 mr-1" /> Back</button>
           <h2 className="text-2xl font-black uppercase tracking-tighter mb-8 text-gray-900">Secure Login</h2>
           {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center"><AlertCircle className="w-4 h-4 mr-2" /> {error}</div>}
           <form onSubmit={handleLogin} className="space-y-6">
-            <input type="text" placeholder="USERNAME" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-brand-500 outline-none font-medium text-gray-900 placeholder-gray-500" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
+            <input type="text" placeholder="USERNAME" className="w-full p-4 bg-white rounded-2xl border-2 border-gray-200 focus:border-brand-500 outline-none font-bold text-gray-900 placeholder-gray-400 focus:bg-brand-50/10 transition-colors" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
             {requirePassword && (
-                <input type="password" placeholder="PASSWORD" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-brand-500 outline-none font-medium text-gray-900 placeholder-gray-500" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+                <input type="password" placeholder="PASSWORD" className="w-full p-4 bg-white rounded-2xl border-2 border-gray-200 focus:border-brand-500 outline-none font-bold text-gray-900 placeholder-gray-400 focus:bg-brand-50/10 transition-colors" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
             )}
             <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl shadow-lg hover:bg-brand-800 transition-colors">Authenticate</button>
           </form>
@@ -242,7 +259,7 @@ const ResidentPortal = () => {
             }}
           />
         )}
-        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
+        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
           <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
             <div><h2 className="text-2xl font-black uppercase tracking-tighter">Resident Account Request</h2></div>
             <button onClick={() => { resetForm(); setMode('INITIAL'); }} className="text-brand-300 hover:text-white uppercase text-[10px] font-black transition-colors">Cancel</button>
@@ -253,13 +270,13 @@ const ResidentPortal = () => {
             <div className="space-y-6">
               <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b pb-2">Step 1: Personal Details</h3>
               <div className="grid grid-cols-2 gap-8">
-                 <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
-                 <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
+                 <input type="text" placeholder="FIRST NAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
+                 <input type="text" placeholder="LAST NAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <select 
-                  className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none" 
+                  className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 outline-none border-2 border-gray-200 focus:border-brand-500 transition-colors" 
                   value={formData.complex} 
                   onChange={e => setFormData({...formData, complex: e.target.value})} 
                 >
@@ -267,15 +284,15 @@ const ResidentPortal = () => {
                   {availableProperties.map(p => <option key={p.id} value={p.propertyName}>{p.propertyName}</option>)}
                 </select>
                 
-                <input type="text" placeholder="UNIT NUMBER" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={formData.unitNumber} onChange={e => setFormData({...formData, unitNumber: e.target.value})} />
+                <input type="text" placeholder="UNIT NUMBER" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={formData.unitNumber} onChange={e => setFormData({...formData, unitNumber: e.target.value})} />
               </div>
 
               <div className="grid grid-cols-2 gap-8 mt-4">
                 <div className="relative">
-                   <input type="date" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={formData.dateOfBirth} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} />
+                   <input type="date" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={formData.dateOfBirth} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} />
                    <span className="absolute -top-6 left-2 text-[10px] font-bold text-gray-500 uppercase">Date of Birth</span>
                 </div>
-                <input type="text" placeholder="STATE ID / DL NUMBER" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 placeholder-gray-500" value={formData.dlNumber} onChange={e => setFormData({...formData, dlNumber: e.target.value})} />
+                <input type="text" placeholder="STATE ID / DL NUMBER" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={formData.dlNumber} onChange={e => setFormData({...formData, dlNumber: e.target.value})} />
               </div>
             </div>
 
@@ -325,10 +342,10 @@ const ResidentPortal = () => {
                <p className="text-[10px] font-black text-brand-700 uppercase tracking-widest mb-6">Step 3: Access Credentials</p>
                <div className="grid grid-cols-2 gap-4">
                   <div className="relative">
-                    <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-white rounded-xl font-medium text-gray-900 placeholder-gray-500 border-2 border-transparent focus:border-brand-500 outline-none shadow-sm" value={formData.credentials?.username} onChange={e => setFormData({...formData, credentials: {...formData.credentials!, username: e.target.value}})} />
+                    <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-transparent focus:border-brand-500 outline-none shadow-sm" value={formData.credentials?.username} onChange={e => setFormData({...formData, credentials: {...formData.credentials!, username: e.target.value}})} />
                     <span className="absolute -bottom-5 left-2 text-[9px] font-bold text-brand-600 uppercase">Must be globally unique</span>
                   </div>
-                  <input type="password" placeholder="PASSWORD" required className="p-4 bg-white rounded-xl font-medium text-gray-900 placeholder-gray-500 border-2 border-transparent focus:border-brand-500 outline-none shadow-sm" value={formData.credentials?.password} onChange={e => setFormData({...formData, credentials: {...formData.credentials!, password: e.target.value}})} />
+                  <input type="password" placeholder="PASSWORD" required className="p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-transparent focus:border-brand-500 outline-none shadow-sm" value={formData.credentials?.password} onChange={e => setFormData({...formData, credentials: {...formData.credentials!, password: e.target.value}})} />
                </div>
             </div>
 
@@ -348,7 +365,7 @@ const ResidentPortal = () => {
   if (mode === 'SUCCESS') {
     return (
       <div className="max-md mx-auto py-24 px-4 text-center">
-        <div className="bg-white p-12 rounded-[3rem] shadow-2xl">
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-gray-100">
           <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-6" />
           <h2 className="text-2xl font-black uppercase tracking-tighter mb-4 text-gray-900">Protocol Pending</h2>
           <p className="text-gray-700 font-medium mb-8 uppercase text-[10px] tracking-widest leading-relaxed">Your request is being reviewed. Credentials will activate upon approval.</p>
@@ -401,7 +418,7 @@ const ResidentPortal = () => {
          </div>
 
          <div className="relative z-10 max-w-4xl mx-auto py-12 px-4">
-            <div className="bg-white/90 backdrop-blur-sm rounded-[3rem] shadow-2xl overflow-hidden">
+            <div className="bg-white/90 backdrop-blur-sm rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100">
                 <div className="p-10 border-b border-gray-100 flex flex-col md:flex-row items-center gap-10">
                   <div className="relative">
                       <img src={currentUser.residentImageUrl} className="w-40 h-40 rounded-[2rem] object-cover ring-8 ring-brand-50" />
@@ -432,16 +449,16 @@ const ResidentPortal = () => {
                     <div className="grid grid-cols-2 gap-8">
                         <div className="space-y-4">
                           <label className="block text-[10px] font-black uppercase text-gray-600">Move-In Date</label>
-                          <p className="p-4 bg-gray-50 rounded-xl font-bold text-gray-900">{currentUser.moveInDate}</p>
+                          <p className="p-4 bg-white rounded-xl font-bold text-gray-900 border border-gray-100">{currentUser.moveInDate}</p>
                         </div>
                         <div className="space-y-4">
                           <label className="block text-[10px] font-black uppercase text-gray-600">Lease Expiration</label>
-                          <p className="p-4 bg-gray-50 rounded-xl font-bold text-gray-900">{currentUser.leaseExpirationDate}</p>
+                          <p className="p-4 bg-white rounded-xl font-bold text-gray-900 border border-gray-100">{currentUser.leaseExpirationDate}</p>
                         </div>
                     </div>
                   ) : (
                     <div className="space-y-10">
-                        <div className="flex items-center justify-between p-8 bg-gray-50 rounded-[2rem]">
+                        <div className="flex items-center justify-between p-8 bg-white rounded-[2rem] border border-gray-100">
                           <div>
                               <h3 className="text-xl font-black uppercase tracking-tight flex items-center gap-2 text-gray-900">
                                 {currentUser.acceptingVisitors ? <ShieldCheck className="text-emerald-500"/> : <ShieldAlert className="text-red-500"/>}
@@ -467,7 +484,7 @@ const ResidentPortal = () => {
                               <input 
                                 type="text" 
                                 placeholder="Full name of allowed guest..." 
-                                className="flex-grow p-4 bg-gray-50 rounded-xl font-medium outline-none focus:ring-2 ring-brand-100 text-gray-900 placeholder-gray-500" 
+                                className="flex-grow p-4 bg-white rounded-xl font-medium outline-none focus:ring-2 ring-brand-100 text-gray-900 placeholder-gray-400 border border-gray-200 transition-colors" 
                                 value={newAllowedName}
                                 onChange={e => setNewAllowedName(e.target.value)}
                                 onKeyPress={e => e.key === 'Enter' && addAllowedVisitor()}
@@ -476,10 +493,10 @@ const ResidentPortal = () => {
                           </div>
                           <div className="grid gap-2">
                               {currentUser.allowedVisitors.length === 0 ? (
-                                <p className="text-xs text-gray-600 font-black uppercase italic p-4 text-center bg-gray-50 rounded-xl">No whitelist restrictions set. All visitors permitted (if toggle is ON).</p>
+                                <p className="text-xs text-gray-600 font-black uppercase italic p-4 text-center bg-white rounded-xl border border-dashed border-gray-200">No whitelist restrictions set. All visitors permitted (if toggle is ON).</p>
                               ) : (
                                 currentUser.allowedVisitors.map((name, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl group">
+                                    <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-xl group border border-gray-100">
                                       <span className="font-bold uppercase text-sm text-gray-900">{name}</span>
                                       <button onClick={() => removeAllowedVisitor(idx)} className="text-red-400 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4"/></button>
                                     </div>

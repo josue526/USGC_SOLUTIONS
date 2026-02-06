@@ -189,15 +189,15 @@ const ManagementPortal = () => {
   if (mode === 'LOGIN') {
     return (
       <div className="max-w-md mx-auto py-24 px-4">
-        <div className="bg-white p-12 rounded-[3rem] shadow-2xl text-center">
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl text-center border border-gray-100">
           <img src={LOGO_URL} alt="Logo" className="w-32 mx-auto mb-6" referrerPolicy="no-referrer" />
           <h2 className="text-3xl font-black uppercase tracking-tighter text-gray-900">PM Portal</h2>
           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-8">Management Authorization Terminal</p>
           {error && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
           <form onSubmit={handleLogin} className="space-y-6">
-            <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
+            <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-white border-2 border-gray-200 rounded-2xl font-bold text-gray-900 focus:border-brand-500 outline-none placeholder-gray-400 focus:bg-brand-50/10 transition-colors" value={creds.username} onChange={e => setCreds({...creds, username: e.target.value})} />
             {requirePassword && (
-                <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
+                <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-white border-2 border-gray-200 rounded-2xl font-bold text-gray-900 focus:border-brand-500 outline-none placeholder-gray-400 focus:bg-brand-50/10 transition-colors" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} />
             )}
             <button type="submit" className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl hover:bg-brand-800 transition-colors shadow-lg">Sign In</button>
             <div className="flex flex-col gap-2 mt-4">
@@ -215,7 +215,7 @@ const ManagementPortal = () => {
     const isRequestingStaff = mode === 'STAFF_REGISTER';
     return (
       <div className="max-w-2xl mx-auto py-12 px-4">
-        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
+        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
           <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
             <div>
                <h2 className="text-2xl font-black uppercase tracking-tighter">{isRequestingStaff ? 'Staff Access Request' : 'Property Manager Request'}</h2>
@@ -230,37 +230,37 @@ const ManagementPortal = () => {
               <>
                 <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Select Target Property</label>
-                    <select required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900 border-2 border-transparent focus:border-brand-500 outline-none" value={staffForm.propertyName} onChange={e => setStaffForm({...staffForm, propertyName: e.target.value})}>
+                    <select required className="w-full p-4 bg-white border-2 border-gray-200 rounded-xl font-bold text-gray-900 focus:border-brand-500 outline-none transition-colors" value={staffForm.propertyName} onChange={e => setStaffForm({...staffForm, propertyName: e.target.value})}>
                         <option value="">SELECT PROPERTY</option>
                         {availableProperties.map(p => <option key={p.id} value={p.propertyName}>{p.propertyName}</option>)}
                     </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <input type="text" placeholder="FIRST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={staffForm.firstName} onChange={e => setStaffForm({...staffForm, firstName: e.target.value})} />
-                    <input type="text" placeholder="LAST NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={staffForm.lastName} onChange={e => setStaffForm({...staffForm, lastName: e.target.value})} />
+                    <input type="text" placeholder="FIRST NAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={staffForm.firstName} onChange={e => setStaffForm({...staffForm, firstName: e.target.value})} />
+                    <input type="text" placeholder="LAST NAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={staffForm.lastName} onChange={e => setStaffForm({...staffForm, lastName: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <input type="text" placeholder="USERNAME" required className="p-4 bg-white border rounded-xl font-medium text-gray-900" value={staffForm.credentials.username} onChange={e => setStaffForm({...staffForm, credentials: {...staffForm.credentials, username: e.target.value}})} />
-                    <input type="password" placeholder="PASSWORD" required className="p-4 bg-white border rounded-xl font-medium text-gray-900" value={staffForm.credentials.password} onChange={e => setStaffForm({...staffForm, credentials: {...staffForm.credentials, password: e.target.value}})} />
+                    <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={staffForm.credentials.username} onChange={e => setStaffForm({...staffForm, credentials: {...staffForm.credentials, username: e.target.value}})} />
+                    <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={staffForm.credentials.password} onChange={e => setStaffForm({...staffForm, credentials: {...staffForm.credentials, password: e.target.value}})} />
                 </div>
               </>
             ) : (
               <>
-                <input type="text" placeholder="PROPERTY NAME" required className="w-full p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={propForm.propertyName} onChange={e => setPropForm({...propForm, propertyName: e.target.value})} />
+                <input type="text" placeholder="PROPERTY NAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={propForm.propertyName} onChange={e => setPropForm({...propForm, propertyName: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4">
-                   <select className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900 outline-none" value={propForm.state} onChange={e => setPropForm({...propForm, state: e.target.value})}>
+                   <select className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 outline-none border-2 border-gray-200 focus:border-brand-500 transition-colors" value={propForm.state} onChange={e => setPropForm({...propForm, state: e.target.value})}>
                      <option value="">STATE</option>
                      {AVAILABLE_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                    </select>
-                   <input type="text" placeholder="CITY" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={propForm.city} onChange={e => setPropForm({...propForm, city: e.target.value})} />
+                   <input type="text" placeholder="CITY" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={propForm.city} onChange={e => setPropForm({...propForm, city: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                   <input type="text" placeholder="FULL NAME" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={propForm.managerName} onChange={e => setPropForm({...propForm, managerName: e.target.value})} />
-                   <input type="text" placeholder="PHONE" required className="p-4 bg-gray-50 rounded-xl font-medium text-gray-900" value={propForm.phoneNumber} onChange={e => setPropForm({...propForm, phoneNumber: e.target.value})} />
+                   <input type="text" placeholder="FULL NAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={propForm.managerName} onChange={e => setPropForm({...propForm, managerName: e.target.value})} />
+                   <input type="text" placeholder="PHONE" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={propForm.phoneNumber} onChange={e => setPropForm({...propForm, phoneNumber: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4 border-t pt-6">
-                   <input type="text" placeholder="USERNAME" required className="p-4 bg-white border rounded-xl font-medium text-gray-900" value={propForm.credentials.username} onChange={e => setPropForm({...propForm, credentials: {...propForm.credentials, username: e.target.value}})} />
-                   <input type="password" placeholder="PASSWORD" required className="p-4 bg-white border rounded-xl font-medium text-gray-900" value={propForm.credentials.password} onChange={e => setPropForm({...propForm, credentials: {...propForm.credentials, password: e.target.value}})} />
+                   <input type="text" placeholder="USERNAME" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={propForm.credentials.username} onChange={e => setPropForm({...propForm, credentials: {...propForm.credentials, username: e.target.value}})} />
+                   <input type="password" placeholder="PASSWORD" required className="w-full p-4 bg-white rounded-xl font-bold text-gray-900 placeholder-gray-400 border-2 border-gray-200 focus:border-brand-500 outline-none transition-colors" value={propForm.credentials.password} onChange={e => setPropForm({...propForm, credentials: {...propForm.credentials, password: e.target.value}})} />
                 </div>
               </>
             )}
@@ -274,11 +274,11 @@ const ManagementPortal = () => {
   if (mode === 'SUCCESS') {
     return (
       <div className="max-w-md mx-auto py-24 px-4 text-center">
-        <div className="bg-white p-12 rounded-[3rem] shadow-2xl">
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-gray-100">
           <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-6" />
           <h2 className="text-2xl font-black uppercase tracking-tighter mb-4 text-gray-900">Request Sent</h2>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-loose mb-8">Authorization will be reviewed by the appropriate system level.</p>
-          <button onClick={() => setMode('LOGIN')} className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl">Return to Login</button>
+          <button onClick={() => setMode('LOGIN')} className="w-full bg-brand-900 text-white font-black uppercase py-4 rounded-2xl hover:bg-brand-800 transition-colors">Return to Login</button>
         </div>
       </div>
     );
@@ -293,15 +293,15 @@ const ManagementPortal = () => {
        {showImport && (
            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
              <div className="absolute inset-0 bg-brand-900/80 backdrop-blur-md" onClick={() => setShowImport(false)}></div>
-             <div className="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-slide-up">
+             <div className="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-slide-up border border-gray-100">
                 <div className="bg-brand-900 p-8 text-white flex justify-between items-center">
                    <h3 className="text-xl font-black uppercase tracking-tighter">Bulk Import Residents</h3>
                    <button onClick={() => setShowImport(false)} className="text-brand-300 hover:text-white"><XCircle/></button>
                 </div>
                 <div className="p-10 space-y-6">
-                    <p className="text-xs text-gray-500 font-bold">Paste resident list in the format: <br/> <span className="font-mono bg-gray-100 p-1 rounded">Apartment Number, Last Name, First Name</span></p>
+                    <p className="text-xs text-gray-500 font-bold">Paste resident list in the format: <br/> <span className="font-mono bg-gray-100 p-1 rounded border border-gray-200">Apartment Number, Last Name, First Name</span></p>
                     <textarea 
-                        className="w-full h-64 p-4 bg-gray-50 rounded-xl font-mono text-sm border-2 border-transparent focus:border-brand-500 outline-none" 
+                        className="w-full h-64 p-4 bg-white rounded-xl font-mono text-sm border-2 border-gray-200 focus:border-brand-500 outline-none text-gray-900 transition-colors" 
                         placeholder={`101, Smith, John\n102, Doe, Jane`}
                         value={importText}
                         onChange={e => setImportText(e.target.value)}
@@ -348,7 +348,7 @@ const ManagementPortal = () => {
        {editingResident && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
            <div className="absolute inset-0 bg-brand-900/80 backdrop-blur-md" onClick={() => { setEditingResident(null); setResetPassword(''); }}></div>
-           <form onSubmit={handleResidentUpdate} className="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+           <form onSubmit={handleResidentUpdate} className="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh] border border-gray-100">
               {/* ... (Existing Modal Content) ... */}
               <div className="bg-brand-900 p-8 text-white flex justify-between items-center flex-shrink-0">
                 <div className="flex items-center gap-4">
@@ -371,26 +371,26 @@ const ManagementPortal = () => {
                      <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Unit Number</label>
-                            <input type="text" required className="w-full p-4 bg-gray-50 rounded-2xl font-bold text-gray-900 outline-none focus:ring-2 ring-brand-100" value={editingResident.unitNumber} onChange={e => setEditingResident({...editingResident, unitNumber: e.target.value})} />
+                            <input type="text" required className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-bold text-gray-900 outline-none focus:ring-2 ring-brand-100" value={editingResident.unitNumber} onChange={e => setEditingResident({...editingResident, unitNumber: e.target.value})} />
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Lease Expiration</label>
-                            <input type="date" required className="w-full p-4 bg-gray-50 rounded-2xl font-bold text-gray-900 outline-none focus:ring-2 ring-brand-100" value={editingResident.leaseExpirationDate} onChange={e => setEditingResident({...editingResident, leaseExpirationDate: e.target.value})} />
+                            <input type="date" required className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-bold text-gray-900 outline-none focus:ring-2 ring-brand-100" value={editingResident.leaseExpirationDate} onChange={e => setEditingResident({...editingResident, leaseExpirationDate: e.target.value})} />
                         </div>
                         <div className="col-span-2 space-y-2">
                             <label className="text-[10px] font-black text-gray-500 uppercase ml-2">ID / DL Number</label>
                             <div className="relative">
                                 <CreditCard className="absolute left-4 top-4 text-gray-400 w-5 h-5"/>
-                                <input type="text" className="w-full p-4 pl-12 bg-gray-50 rounded-2xl font-bold text-gray-900 outline-none focus:ring-2 ring-brand-100" value={editingResident.dlNumber} onChange={e => setEditingResident({...editingResident, dlNumber: e.target.value})} />
+                                <input type="text" className="w-full p-4 pl-12 bg-white border border-gray-200 rounded-2xl font-bold text-gray-900 outline-none focus:ring-2 ring-brand-100" value={editingResident.dlNumber} onChange={e => setEditingResident({...editingResident, dlNumber: e.target.value})} />
                             </div>
                         </div>
                         <div className="col-span-2 space-y-2">
                             <label className="text-[10px] font-black text-gray-500 uppercase ml-2 flex items-center gap-2"><KeyRound className="w-3 h-3"/> Reset Password (Optional)</label>
-                            <input type="text" placeholder="Enter new password to reset..." className="w-full p-4 bg-red-50 rounded-2xl font-bold text-red-900 placeholder-red-300 outline-none focus:ring-2 ring-red-100" value={resetPassword} onChange={e => setResetPassword(e.target.value)} />
+                            <input type="text" placeholder="Enter new password to reset..." className="w-full p-4 bg-red-50 border border-red-100 rounded-2xl font-bold text-red-900 placeholder-red-300 outline-none focus:ring-2 ring-red-100" value={resetPassword} onChange={e => setResetPassword(e.target.value)} />
                         </div>
                         <div className="col-span-2 space-y-2">
                             <label className="text-[10px] font-black text-gray-500 uppercase ml-2">Internal Management Notes</label>
-                            <textarea rows={4} className="w-full p-4 bg-gray-50 rounded-2xl font-medium text-gray-900 outline-none focus:ring-2 ring-brand-100" value={editingResident.notes || ''} onChange={e => setEditingResident({...editingResident, notes: e.target.value})} />
+                            <textarea rows={4} className="w-full p-4 bg-white border border-gray-200 rounded-2xl font-medium text-gray-900 outline-none focus:ring-2 ring-brand-100" value={editingResident.notes || ''} onChange={e => setEditingResident({...editingResident, notes: e.target.value})} />
                         </div>
                      </div>
                  )}
@@ -414,7 +414,7 @@ const ManagementPortal = () => {
 
                          <section>
                              <h4 className="text-sm font-black uppercase text-gray-500 mb-4 flex items-center gap-2"><History className="w-4 h-4"/> Visitor History</h4>
-                             <div className="bg-gray-50 rounded-2xl p-4 max-h-40 overflow-y-auto custom-scrollbar space-y-2">
+                             <div className="bg-gray-50 rounded-2xl p-4 max-h-40 overflow-y-auto custom-scrollbar space-y-2 border border-gray-200">
                                  {db.getAllVisitors().filter(v => v.residentId === editingResident.id && v.status !== 'ACTIVE').length === 0 ? (
                                      <p className="text-xs text-gray-400 italic">No historical visits.</p>
                                  ) : db.getAllVisitors().filter(v => v.residentId === editingResident.id && v.status !== 'ACTIVE').map(v => (
@@ -482,7 +482,7 @@ const ManagementPortal = () => {
                 <div>
                    <h1 className="text-3xl font-black uppercase tracking-tighter text-gray-900 leading-none">Management Dashboard</h1>
                    <div className="flex items-center gap-3 mt-3">
-                      <select className="bg-brand-50 text-[10px] font-black uppercase text-brand-900 px-3 py-1 rounded-full border border-brand-100 outline-none cursor-pointer" value={selectedPropId} onChange={e => setSelectedPropId(e.target.value)}>
+                      <select className="bg-white text-[10px] font-black uppercase text-brand-900 px-3 py-1 rounded-full border border-gray-300 outline-none cursor-pointer hover:border-brand-500" value={selectedPropId} onChange={e => setSelectedPropId(e.target.value)}>
                          {myProperties.map(p => <option key={p.id} value={p.id}>{p.propertyName}</option>)}
                       </select>
                       {isStaff && <span className="text-[9px] font-black uppercase bg-black text-white px-2 py-1 rounded">Staff Mode</span>}
