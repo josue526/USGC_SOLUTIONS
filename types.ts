@@ -112,6 +112,7 @@ export interface VisitorProfile {
   visitorImageUrl?: string; 
   visitorIdImageUrl?: string; 
   relationship: string;
+  vehicleInfo?: string; // Make, Model, Plate
   checkInTime: number;
   expectedDurationHours: number; 
   expirationTime: number; 
